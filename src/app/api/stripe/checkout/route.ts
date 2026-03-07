@@ -56,11 +56,12 @@ export async function POST() {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (err) {
-    console.error("Stripe checkout error:", err);
-    const message = err instanceof Error ? err.message : "Unknown error";
+  } catch (err: unknown) {
+    console.error("Stripe checkout error:", JSON.stringify(err, Object.getOwnPropertyNames(err as object)));
+    const message = err instanceof Error ? err.message : String(err);
+    const type = err && typeof err === "object" && "type" in err ? (err as { type: string }).type : "unknown";
     return NextResponse.json(
-      { error: `Failed to create checkout session: ${message}` },
+      { error: `Checkout failed [${type}]: ${message}` },
       { status: 500 }
     );
   }
