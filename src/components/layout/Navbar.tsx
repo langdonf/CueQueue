@@ -25,6 +25,21 @@ export function Navbar() {
       </Link>
 
       <div className="flex items-center gap-2">
+        {/* Desktop nav links (hidden on mobile where bottom nav is used) */}
+        <nav className="hidden sm:flex items-center gap-1 mr-2">
+          <Link
+            href="/setlists"
+            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+          >
+            Setlists
+          </Link>
+          <Link
+            href="/settings"
+            className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted"
+          >
+            Settings
+          </Link>
+        </nav>
         <ThemeSwitcher />
         <button
           onClick={handleSignOut}
