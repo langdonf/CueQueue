@@ -39,3 +39,38 @@ body {
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
 }
+
+/* Splash page — film grain overlay for analog warmth */
+.splash-grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  opacity: 0.035;
+  pointer-events: none;
+  z-index: 50;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* Splash page — staggered fade-in */
+@keyframes splash-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.splash-fade-in {
+  animation: splash-fade 0.8s ease-out both;
+}
+
+.splash-fade-in-d1 {
+  animation: splash-fade 0.8s ease-out 0.1s both;
+}
+
+.splash-fade-in-d2 {
+  animation: splash-fade 0.8s ease-out 0.2s both;
+}
+
+.splash-fade-in-d3 {
+  animation: splash-fade 0.8s ease-out 0.35s both;
+}
