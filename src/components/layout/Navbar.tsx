@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Music, LogOut } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
-import { ThemeSwitcher } from "@/components/dev/ThemeSwitcher";
 
 export function Navbar() {
   const router = useRouter();
@@ -21,7 +20,7 @@ export function Navbar() {
     <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-border">
       <Link href="/setlists" className="flex items-center gap-2">
         <Music className="w-5 h-5 text-primary" />
-        <span className="text-lg font-bold">SetList</span>
+        <span className="text-lg font-medium">SetList</span>
       </Link>
 
       <div className="flex items-center gap-2">
@@ -40,7 +39,6 @@ export function Navbar() {
             Settings
           </Link>
         </nav>
-        <ThemeSwitcher />
         <button
           onClick={handleSignOut}
           className="p-2 text-muted-foreground hover:text-foreground transition-colors"

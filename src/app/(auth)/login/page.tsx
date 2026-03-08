@@ -35,7 +35,12 @@ export default function LoginPage() {
   if (sent) {
     return (
       <div className="text-center">
-        <h1 className="text-2xl font-bold mb-2">Check your email</h1>
+        <h1
+          className="text-2xl mb-2"
+          style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}
+        >
+          Check your email
+        </h1>
         <p className="text-muted-foreground">
           We sent a magic link to <strong className="text-foreground">{email}</strong>.
           Click the link to sign in.
@@ -52,7 +57,12 @@ export default function LoginPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-center mb-2">Welcome back</h1>
+      <h1
+        className="text-2xl text-center mb-2"
+        style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}
+      >
+        Welcome back
+      </h1>
       <p className="text-center text-muted-foreground mb-8">
         Sign in with your email
       </p>
@@ -64,14 +74,14 @@ export default function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+          className="w-full px-4 py-3 bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/50 transition-colors"
         />
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-3 border border-primary/40 text-foreground font-medium rounded-lg hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "Sending..." : "Send Magic Link"}
+          {loading ? "Sending..." : "Send magic link"}
         </button>
       </form>
 

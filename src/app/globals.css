@@ -2,20 +2,20 @@
 
 @theme {
   --color-background: #09090b;
-  --color-foreground: #fafafa;
-  --color-muted: #27272a;
-  --color-muted-foreground: #a1a1aa;
-  --color-border: #27272a;
-  --color-input: #27272a;
-  --color-primary: #f97316;
+  --color-foreground: #e8e0d4;
+  --color-muted: #252320;
+  --color-muted-foreground: #8a8078;
+  --color-border: #252320;
+  --color-input: #252320;
+  --color-primary: #d4a574;
   --color-primary-foreground: #09090b;
-  --color-secondary: #18181b;
-  --color-secondary-foreground: #fafafa;
-  --color-accent: #18181b;
-  --color-accent-foreground: #fafafa;
-  --color-destructive: #ef4444;
-  --color-card: #0a0a0c;
-  --color-card-foreground: #fafafa;
+  --color-secondary: #1a1816;
+  --color-secondary-foreground: #e8e0d4;
+  --color-accent: #1a1816;
+  --color-accent-foreground: #e8e0d4;
+  --color-destructive: #c45a5a;
+  --color-card: #0f0e0c;
+  --color-card-foreground: #e8e0d4;
 }
 
 body {
