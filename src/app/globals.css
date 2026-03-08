@@ -40,6 +40,43 @@ body {
   animation: slide-up 0.3s ease-out;
 }
 
+/* Live Mode — current song entrance (slides in from below) */
+@keyframes live-enter {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.live-current-enter {
+  animation: live-enter 0.35s ease-out both;
+}
+
+/* Live Mode — current song exit (slides up and out) */
+@keyframes live-exit-up {
+  to { opacity: 0; transform: translateY(-40px); }
+}
+
+@keyframes live-exit-down {
+  to { opacity: 0; transform: translateY(40px); }
+}
+
+.live-exit-up {
+  animation: live-exit-up 0.25s ease-in forwards;
+}
+
+.live-exit-down {
+  animation: live-exit-down 0.25s ease-in forwards;
+}
+
+/* Live Mode — upcoming songs slide up from below with stagger */
+@keyframes live-upcoming-enter {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.live-upcoming-enter {
+  animation: live-upcoming-enter 0.4s ease-out both;
+}
+
 /* Splash page — film grain overlay for analog warmth */
 .splash-grain::before {
   content: "";
