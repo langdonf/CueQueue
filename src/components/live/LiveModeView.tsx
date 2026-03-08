@@ -30,35 +30,25 @@ export function LiveModeView({
 }: LiveModeViewProps) {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [direction, setDirection] = useState<"up" | "down">("up");
 
   const touchStartY = useRef<number | null>(null);
   const touchStartX = useRef<number | null>(null);
 
   const currentSong = songs[currentIndex];
-  const upcomingSongs = songs.slice(currentIndex + 1);
   const isFirst = currentIndex === 0;
   const isLast = currentIndex === songs.length - 1;
 
+  // All songs after the first — always rendered, played ones collapse via grid
+  const allUpcoming = songs.slice(1);
+
   const advance = useCallback(() => {
     if (currentIndex >= songs.length - 1) return;
-    setDirection("up");
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setCurrentIndex((i) => i + 1);
-      setIsTransitioning(false);
-    }, 250);
+    setCurrentIndex((i) => i + 1);
   }, [currentIndex, songs.length]);
 
   const goBack = useCallback(() => {
     if (currentIndex <= 0) return;
-    setDirection("down");
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setCurrentIndex((i) => i - 1);
-      setIsTransitioning(false);
-    }, 250);
+    setCurrentIndex((i) => i - 1);
   }, [currentIndex]);
 
   // Wake Lock
@@ -117,19 +107,10 @@ export function LiveModeView({
     touchStartX.current = null;
   }
 
-  /**
-   * Compute depth styles for upcoming songs.
-   * Uses CSS transform: scale() on the entire row so everything —
-   * numbers, gaps, padding — shrinks proportionally toward center,
-   * creating a true vanishing-point perspective effect.
-   */
   function getDepthStyle(index: number) {
-    // Scale: 0.92 → 0.82 → 0.72 → 0.63 → 0.55 ...
-    const scale = Math.max(0.45, 0.92 * Math.pow(0.88, index));
-    // Opacity: 0.8 → 0.55 → 0.35 → 0.2 → 0.1 ...
-    const opacity = Math.max(0.04, 0.8 * Math.pow(0.6, index));
-    // Vertical padding shrinks too (tighter rows as they recede)
-    const py = Math.max(2, 12 * scale);
+    const scale = Math.max(0.7, 0.95 * Math.pow(0.95, index));
+    const opacity = Math.max(0.3, 0.85 * Math.pow(0.85, index));
+    const py = Math.max(6, 14 * scale);
     return { scale, opacity, py };
   }
 
@@ -177,16 +158,7 @@ export function LiveModeView({
           style={{ minHeight: "35vh" }}
           aria-label="Previous song"
         >
-          <div
-            key={currentIndex}
-            className={`live-current-enter ${
-              isTransitioning
-                ? direction === "up"
-                  ? "live-exit-up"
-                  : "live-exit-down"
-                : ""
-            }`}
-          >
+          <div>
             <h1 className="text-3xl sm:text-5xl font-bold leading-tight">
               {currentSong.title}
             </h1>
@@ -223,70 +195,89 @@ export function LiveModeView({
           </div>
         </button>
 
-        {/* ═══ UPCOMING SONGS — tap to advance, fills remaining space ═══ */}
+        {/* ═══ UPCOMING SONGS — tap to advance ═══ */}
         <button
           onClick={advance}
           disabled={isLast}
           className="flex-1 flex flex-col border-t border-white/10 min-h-0 cursor-default text-left overflow-hidden"
           aria-label="Next song"
         >
-          {upcomingSongs.length > 0 ? (
-            <div
-              key={currentIndex}
-              className="flex-1 flex flex-col items-center pt-4 overflow-hidden relative"
-            >
-              {upcomingSongs.map((song, i) => {
-                const { scale, opacity, py } = getDepthStyle(i);
-                return (
-                  <div
-                    key={song.id}
-                    className="flex items-center gap-4 shrink-0 live-upcoming-enter w-full px-6"
-                    style={{
-                      opacity,
-                      transform: `scale(${scale})`,
-                      transformOrigin: "center center",
-                      paddingTop: `${py}px`,
-                      paddingBottom: `${py}px`,
-                      animationDelay: `${i * 60}ms`,
-                    }}
-                  >
-                    {/* Position number */}
-                    <span className="text-2xl font-bold font-mono w-10 text-right shrink-0">
-                      {currentIndex + 2 + i}
-                    </span>
+          <div className="flex-1 overflow-hidden relative">
+            {allUpcoming.length > 0 ? (
+              <div
+                className="pt-4"
+                style={{
+                  display: "grid",
+                  gridTemplateRows: allUpcoming
+                    .map((_, i) => {
+                      const songIndex = i + 1;
+                      return songIndex <= currentIndex ? "0fr" : "1fr";
+                    })
+                    .join(" "),
+                  transition: "grid-template-rows 0.35s ease-out",
+                }}
+              >
+                {allUpcoming.map((song, i) => {
+                  const songIndex = i + 1;
+                  const isPlayed = songIndex <= currentIndex;
+                  const depthPosition = songIndex - currentIndex - 1;
+                  const { scale, opacity, py } = isPlayed
+                    ? { scale: 1, opacity: 0, py: 0 }
+                    : getDepthStyle(depthPosition);
 
-                    {/* Song info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-lg font-semibold truncate">
-                        {song.title}
-                      </div>
-                      {song.artist && (
-                        <div className="text-sm text-white/50 truncate">
-                          {song.artist}
+                  return (
+                    <div
+                      key={song.id}
+                      className="overflow-hidden"
+                      style={{ minHeight: 0 }}
+                    >
+                      <div
+                        className="flex items-center gap-4 w-full px-6"
+                        style={{
+                          opacity,
+                          transform: `scale(${scale})`,
+                          transformOrigin: "center center",
+                          paddingTop: `${py}px`,
+                          paddingBottom: `${py}px`,
+                          transition: "all 0.35s ease-out",
+                        }}
+                      >
+                        <span className="text-2xl font-bold font-mono w-10 text-right shrink-0">
+                          {songIndex + 1}
+                        </span>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="text-lg font-semibold truncate">
+                            {song.title}
+                          </div>
+                          {song.artist && (
+                            <div className="text-sm text-white/50 truncate">
+                              {song.artist}
+                            </div>
+                          )}
                         </div>
-                      )}
+
+                        {song.duration_ms && (
+                          <span className="text-sm font-mono shrink-0">
+                            {formatDurationShort(song.duration_ms)}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center h-full">
+                <span className="text-lg text-white/30 uppercase tracking-wide">
+                  End of setlist
+                </span>
+              </div>
+            )}
 
-                    {/* Duration */}
-                    {song.duration_ms && (
-                      <span className="text-sm font-mono shrink-0">
-                        {formatDurationShort(song.duration_ms)}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* Fade-to-black gradient at the bottom */}
-              <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none bg-gradient-to-t from-black to-transparent" />
-            </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <span className="text-lg text-white/30 uppercase tracking-wide">
-                End of setlist
-              </span>
-            </div>
-          )}
+            {/* Fade-to-black gradient at the bottom */}
+            <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none bg-gradient-to-t from-black to-transparent" />
+          </div>
         </button>
       </div>
 
