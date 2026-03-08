@@ -117,13 +117,20 @@ export function LiveModeView({
     touchStartX.current = null;
   }
 
-  /** Compute progressive styles for upcoming songs — smaller + more transparent as they recede */
-  function getUpcomingStyle(index: number) {
-    // Opacity: 0.7 → 0.5 → 0.35 → 0.2 → 0.12 → 0.08 ...
-    const opacity = Math.max(0.06, 0.7 * Math.pow(0.65, index));
-    // Font scale: 1 → 0.88 → 0.78 → 0.7 → 0.64 ...
-    const scale = Math.max(0.55, 1 * Math.pow(0.9, index));
-    return { opacity, scale };
+  /**
+   * Compute depth styles for upcoming songs.
+   * Uses CSS transform: scale() on the entire row so everything —
+   * numbers, gaps, padding — shrinks proportionally toward center,
+   * creating a true vanishing-point perspective effect.
+   */
+  function getDepthStyle(index: number) {
+    // Scale: 0.92 → 0.82 → 0.72 → 0.63 → 0.55 ...
+    const scale = Math.max(0.45, 0.92 * Math.pow(0.88, index));
+    // Opacity: 0.8 → 0.55 → 0.35 → 0.2 → 0.1 ...
+    const opacity = Math.max(0.04, 0.8 * Math.pow(0.6, index));
+    // Vertical padding shrinks too (tighter rows as they recede)
+    const py = Math.max(2, 12 * scale);
+    return { scale, opacity, py };
   }
 
   if (songs.length === 0) {
@@ -226,45 +233,35 @@ export function LiveModeView({
           {upcomingSongs.length > 0 ? (
             <div
               key={currentIndex}
-              className="flex-1 flex flex-col px-6 pt-4 overflow-hidden"
+              className="flex-1 flex flex-col items-center pt-4 overflow-hidden relative"
             >
               {upcomingSongs.map((song, i) => {
-                const { opacity, scale } = getUpcomingStyle(i);
+                const { scale, opacity, py } = getDepthStyle(i);
                 return (
                   <div
                     key={song.id}
-                    className="flex items-center gap-4 py-2.5 shrink-0 live-upcoming-enter"
+                    className="flex items-center gap-4 shrink-0 live-upcoming-enter w-full px-6"
                     style={{
                       opacity,
-                      fontSize: `${scale}rem`,
+                      transform: `scale(${scale})`,
+                      transformOrigin: "center center",
+                      paddingTop: `${py}px`,
+                      paddingBottom: `${py}px`,
                       animationDelay: `${i * 60}ms`,
-                      transformOrigin: "left center",
                     }}
                   >
                     {/* Position number */}
-                    <span
-                      className="font-bold font-mono shrink-0 text-right"
-                      style={{
-                        width: "2.5rem",
-                        fontSize: `${Math.max(1.2, 1.8 * scale)}rem`,
-                      }}
-                    >
+                    <span className="text-2xl font-bold font-mono w-10 text-right shrink-0">
                       {currentIndex + 2 + i}
                     </span>
 
                     {/* Song info */}
                     <div className="flex-1 min-w-0">
-                      <div
-                        className="font-semibold truncate"
-                        style={{ fontSize: `${Math.max(0.85, 1.15 * scale)}rem` }}
-                      >
+                      <div className="text-lg font-semibold truncate">
                         {song.title}
                       </div>
                       {song.artist && (
-                        <div
-                          className="text-white/50 truncate"
-                          style={{ fontSize: `${Math.max(0.7, 0.85 * scale)}rem` }}
-                        >
+                        <div className="text-sm text-white/50 truncate">
                           {song.artist}
                         </div>
                       )}
@@ -272,10 +269,7 @@ export function LiveModeView({
 
                     {/* Duration */}
                     {song.duration_ms && (
-                      <span
-                        className="font-mono shrink-0"
-                        style={{ fontSize: `${Math.max(0.7, 0.85 * scale)}rem` }}
-                      >
+                      <span className="text-sm font-mono shrink-0">
                         {formatDurationShort(song.duration_ms)}
                       </span>
                     )}
@@ -284,7 +278,7 @@ export function LiveModeView({
               })}
 
               {/* Fade-to-black gradient at the bottom */}
-              <div className="mt-auto h-16 shrink-0 pointer-events-none bg-gradient-to-t from-black to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none bg-gradient-to-t from-black to-transparent" />
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center">
