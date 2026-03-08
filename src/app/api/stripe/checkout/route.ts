@@ -14,8 +14,17 @@ export async function POST() {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // Get or create Stripe customer
+    // Ensure a profile row exists (it may be missing if the DB trigger
+    // didn't fire or the user deleted their profile and re-signed up)
     const admin = createSupabaseAdminClient();
+    await admin
+      .from("profiles")
+      .upsert(
+        { id: user.id, display_name: user.email?.split("@")[0] ?? "user" },
+        { onConflict: "id", ignoreDuplicates: true }
+      );
+
+    // Get or create Stripe customer
     const { data: profile } = await admin
       .from("profiles")
       .select("stripe_customer_id")

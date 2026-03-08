@@ -34,14 +34,20 @@ export async function POST(request: Request) {
       const userId = session.metadata?.supabase_user_id;
 
       if (userId) {
-        await admin
+        // Use upsert so the profile is created if it doesn't exist yet
+        // (e.g. if the user deleted their profile or the trigger didn't fire)
+        const { error } = await admin
           .from("profiles")
-          .update({
+          .upsert({
+            id: userId,
             subscription_tier: "pro",
             stripe_customer_id: session.customer as string,
             stripe_subscription_id: session.subscription as string,
-          })
-          .eq("id", userId);
+          }, { onConflict: "id" });
+
+        if (error) {
+          console.error("Failed to upsert profile for checkout:", error);
+        }
       }
       break;
     }
@@ -52,12 +58,16 @@ export async function POST(request: Request) {
 
       if (userId) {
         const isActive = ["active", "trialing"].includes(subscription.status);
-        await admin
+        const { error } = await admin
           .from("profiles")
           .update({
             subscription_tier: isActive ? "pro" : "free",
           })
           .eq("id", userId);
+
+        if (error) {
+          console.error("Failed to update profile for subscription change:", error);
+        }
       }
       break;
     }
@@ -67,10 +77,14 @@ export async function POST(request: Request) {
       const userId = subscription.metadata?.supabase_user_id;
 
       if (userId) {
-        await admin
+        const { error } = await admin
           .from("profiles")
           .update({ subscription_tier: "free" })
           .eq("id", userId);
+
+        if (error) {
+          console.error("Failed to update profile for subscription deletion:", error);
+        }
       }
       break;
     }
