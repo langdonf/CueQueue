@@ -2,8 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Music, MapPin, Calendar, Clock } from "lucide-react";
 import { getSharedSetlist } from "@/actions/share-actions";
-import { formatDuration, formatDurationShort } from "@/lib/utils";
-import { format } from "date-fns";
+import { formatDuration, formatDurationShort, formatGigDate } from "@/lib/utils";
 import { SharedSetlistEditor } from "@/components/setlist/SharedSetlistEditor";
 import type { SongItem } from "@/components/setlist/SetlistEditor";
 
@@ -105,7 +104,7 @@ export default async function SharedSetlistPage({ params }: SharedPageProps) {
         {setlist.gig_date && (
           <span className="flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5" />
-            {format(new Date(setlist.gig_date), "MMM d, yyyy")}
+            {formatGigDate(setlist.gig_date)}
           </span>
         )}
         <span className="flex items-center gap-1">

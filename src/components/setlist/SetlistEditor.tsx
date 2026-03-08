@@ -14,7 +14,7 @@ import { AddSongModal } from "./AddSongModal";
 import { SetlistDuration } from "./SetlistDuration";
 import { SpotifySearch } from "@/components/spotify/SpotifySearch";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { formatGigDate } from "@/lib/utils";
 
 export interface SongItem {
   id: string;
@@ -196,7 +196,7 @@ export function SetlistEditor({
             <span className="text-border">|</span>
           )}
           {setlist.gig_date && (
-            <span>{format(new Date(setlist.gig_date), "MMM d, yyyy")}</span>
+            <span>{formatGigDate(setlist.gig_date)}</span>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { MapPin, Calendar, Music } from "lucide-react";
-import { format } from "date-fns";
+import { formatGigDate } from "@/lib/utils";
 
 interface SetlistCardProps {
   setlist: {
@@ -31,7 +31,7 @@ export function SetlistCard({ setlist, songCount }: SetlistCardProps) {
         {setlist.gig_date && (
           <div className="flex items-center gap-2">
             <Calendar className="w-3.5 h-3.5 shrink-0" />
-            <span>{format(new Date(setlist.gig_date), "MMM d, yyyy")}</span>
+            <span>{formatGigDate(setlist.gig_date)}</span>
           </div>
         )}
         <div className="flex items-center gap-2">
