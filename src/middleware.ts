@@ -1,6 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// 30 days in seconds — keeps users logged in for a month
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
+
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
@@ -13,6 +16,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // If Supabase redirected with an auth error (expired/invalid magic link),
+  // send the user to /login with a friendly error message
+  const authError = searchParams.get("error_code");
+  if (authError && pathname !== "/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    // Pass only the error_code so the login page can show a message
+    url.search = `?error=${authError}`;
+    url.hash = "";
+    return NextResponse.redirect(url);
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -21,6 +36,11 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: {
+        maxAge: COOKIE_MAX_AGE,
+        sameSite: "lax" as const,
+        secure: process.env.NODE_ENV === "production",
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -33,7 +53,7 @@ export async function middleware(request: NextRequest) {
             request,
           });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+            supabaseResponse.cookies.set(name, value, { ...options, maxAge: COOKIE_MAX_AGE } as any) // eslint-disable-line @typescript-eslint/no-explicit-any
           );
         },
       },
