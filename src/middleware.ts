@@ -7,10 +7,16 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  // Callback handles its own auth — skip middleware entirely so
+  // getUser() doesn't interfere with the PKCE code verifier cookie
+  if (pathname.startsWith("/callback")) {
+    return NextResponse.next({ request });
+  }
+
   // If any route has a ?code= param (magic link landed on wrong path),
   // redirect to /callback so the code gets exchanged for a session
   const code = searchParams.get("code");
-  if (code && pathname !== "/callback") {
+  if (code) {
     const url = request.nextUrl.clone();
     url.pathname = "/callback";
     return NextResponse.redirect(url);

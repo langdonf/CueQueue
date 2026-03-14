@@ -1,35 +1,41 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function CallbackPage() {
   const router = useRouter();
+  const [status, setStatus] = useState("Signing you in...");
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
 
-    // The browser client automatically detects ?code= in the URL
-    // and exchanges it for a session using the PKCE code verifier
-    // it stored when signInWithOtp was called.
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") {
-        router.replace("/setlists");
-      }
-    });
+    if (!code) {
+      console.error("[callback] No code in URL");
+      router.replace("/login?error=access_denied");
+      return;
+    }
 
-    // If nothing happens after 5s, something went wrong
-    const timeout = setTimeout(() => {
-      router.replace("/login?error=otp_expired");
-    }, 5000);
-
-    return () => clearTimeout(timeout);
+    supabase.auth
+      .exchangeCodeForSession(code)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("[callback] exchangeCodeForSession failed:", error.message, error);
+          setStatus(`Error: ${error.message}`);
+          setTimeout(() => router.replace("/login?error=otp_expired"), 2000);
+        } else {
+          console.log("[callback] Session established for:", data.user?.email);
+          router.replace("/setlists");
+        }
+      });
   }, [router]);
 
   return (
     <div className="text-center">
-      <p className="text-muted-foreground">Signing you in...</p>
+      <p className="text-muted-foreground">{status}</p>
     </div>
   );
 }
