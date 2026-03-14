@@ -10,27 +10,44 @@ export default function CallbackPage() {
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
+
+    // Listen for the session to be established — this handles both
+    // explicit exchangeCodeForSession AND the client's automatic
+    // detectSessionInUrl fallback
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN") {
+        router.replace("/setlists");
+      }
+    });
+
+    // Try explicit code exchange first
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
 
-    if (!code) {
-      console.error("[callback] No code in URL");
-      router.replace("/login?error=access_denied");
-      return;
-    }
-
-    supabase.auth
-      .exchangeCodeForSession(code)
-      .then(({ data, error }) => {
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
         if (error) {
-          console.error("[callback] exchangeCodeForSession failed:", error.message, error);
-          setStatus(`Error: ${error.message}`);
-          setTimeout(() => router.replace("/login?error=otp_expired"), 2000);
-        } else {
-          console.log("[callback] Session established for:", data.user?.email);
-          router.replace("/setlists");
+          // Don't redirect to login yet — the client's detectSessionInUrl
+          // may still pick up the session automatically
+          console.warn("[callback] exchangeCodeForSession failed:", error.message);
         }
       });
+    }
+
+    // Safety net: if nothing works after 10s, send to login
+    const timeout = setTimeout(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.replace("/setlists");
+      } else {
+        router.replace("/login?error=access_denied");
+      }
+    }, 10000);
+
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   return (
