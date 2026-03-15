@@ -28,20 +28,18 @@ export function SetlistCard({ setlist, songCount }: SetlistCardProps) {
   async function handleDuplicate() {
     setShowMenu(false);
     const result = await duplicateSetlist(setlist.id);
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       return;
     }
-    if (result.id) {
-      toast.success("Setlist duplicated");
-      router.push(`/setlists/${result.id}`);
-    }
+    toast.success("Setlist duplicated");
+    router.push(`/setlists/${result.data.id}`);
   }
 
   async function handleArchive() {
     setShowMenu(false);
     const result = await archiveSetlist(setlist.id, !isArchived);
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       return;
     }
@@ -53,7 +51,7 @@ export function SetlistCard({ setlist, songCount }: SetlistCardProps) {
     setShowMenu(false);
     if (!confirm("Delete this setlist? This cannot be undone.")) return;
     const result = await deleteSetlist(setlist.id);
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       return;
     }

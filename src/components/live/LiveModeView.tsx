@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { formatDurationShort } from "@/lib/utils";
-import { BREAK_SENTINEL } from "@/components/setlist/SetlistEditor";
+import { BREAK_SENTINEL } from "@/lib/constants";
 
 interface LiveSong {
   id: string;

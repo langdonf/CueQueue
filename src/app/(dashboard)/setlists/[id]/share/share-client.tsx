@@ -25,7 +25,8 @@ export function SharePageClient({ setlistId }: SharePageClientProps) {
 
   const loadLinks = useCallback(async () => {
     const result = await getShareLinks(setlistId);
-    if (result.data) setLinks(result.data);
+    if ("data" in result && result.data) setLinks(result.data);
+    if ("error" in result) toast.error(result.error);
     setLoading(false);
   }, [setlistId]);
 
@@ -45,7 +46,7 @@ export function SharePageClient({ setlistId }: SharePageClientProps) {
 
   async function handleRevoke(linkId: string) {
     const result = await revokeShareLink(linkId);
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       return;
     }
@@ -53,12 +54,16 @@ export function SharePageClient({ setlistId }: SharePageClientProps) {
     toast.success("Link revoked");
   }
 
-  function copyLink(token: string, id: string) {
-    const url = `${window.location.origin}/shared/${token}`;
-    navigator.clipboard.writeText(url);
-    setCopiedId(id);
-    toast.success("Link copied!");
-    setTimeout(() => setCopiedId(null), 2000);
+  async function copyLink(token: string, id: string) {
+    try {
+      const url = `${window.location.origin}/shared/${token}`;
+      await navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      toast.success("Link copied!");
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast.error("Failed to copy link to clipboard");
+    }
   }
 
   return (

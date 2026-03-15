@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getSetlist } from "@/actions/setlist-actions";
 import { LiveModeView } from "@/components/live/LiveModeView";
+import { mapSetlistSongs } from "@/lib/types";
 import { isProUser } from "@/lib/subscription";
 import { UpgradePrompt } from "@/components/subscription/UpgradePrompt";
 
@@ -18,16 +19,11 @@ export default async function LivePage({ params }: LivePageProps) {
 
   const result = await getSetlist(id);
 
-  if (result.error || !result.data) {
+  if (!("data" in result) || !result.data) {
     notFound();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const songs = (result.data.setlist_songs ?? []).map((ss: any) => ({
-    position: ss.position,
-    transitionNotes: ss.transition_notes,
-    ...ss.song,
-  }));
+  const songs = mapSetlistSongs(result.data.setlist_songs ?? []);
 
   return (
     <LiveModeView

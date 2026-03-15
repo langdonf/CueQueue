@@ -24,13 +24,13 @@ export default function NewSetlistPage() {
 
     setLoading(false);
 
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       return;
     }
 
     toast.success("Setlist created");
-    router.push(`/setlists/${result.id}`);
+    router.push(`/setlists/${result.data.id}`);
   }
 
   return (

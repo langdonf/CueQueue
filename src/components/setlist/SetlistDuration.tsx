@@ -1,6 +1,6 @@
 import { Clock } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
-import type { SongItem } from "./SetlistEditor";
+import type { SongItem } from "@/lib/types";
 
 interface SetlistDurationProps {
   songs: SongItem[];

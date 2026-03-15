@@ -18,33 +18,20 @@ import { SetlistDuration } from "./SetlistDuration";
 import { SpotifySearch } from "@/components/spotify/SpotifySearch";
 import { toast } from "sonner";
 import { formatGigDate } from "@/lib/utils";
+import { BREAK_SENTINEL } from "@/lib/constants";
+import type { SongItem, CreateSongInput, ActionResult } from "@/lib/types";
 
-export const BREAK_SENTINEL = "___SET_BREAK___";
+export type { SongItem } from "@/lib/types";
 
-export interface SongItem {
-  id: string;
-  setlistSongId: string;
-  position: number;
-  title: string;
-  artist: string | null;
-  duration_ms: number | null;
-  bpm: number | null;
-  key: string | null;
-  notes: string | null;
-  spotify_uri: string | null;
-  transitionNotes: string | null;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AddSongFn = (setlistId: string, songInput: any) => Promise<any>;
+type AddSongFn = (setlistId: string, songInput: CreateSongInput) => Promise<ActionResult<{ song: SongItem }>>;
 type RemoveSongFn = (
   setlistId: string,
   songId: string
-) => Promise<{ error?: string; success?: boolean }>;
+) => Promise<ActionResult>;
 type ReorderSongsFn = (
   setlistId: string,
   orderedSongIds: string[]
-) => Promise<{ error?: string; success?: boolean }>;
+) => Promise<ActionResult>;
 
 interface SetlistEditorProps {
   setlist: {
@@ -108,7 +95,7 @@ export function SetlistEditor({
     setEditingName(false);
     if (name !== setlist.name) {
       const result = await updateSetlist(setlist.id, { name });
-      if (result.error) {
+      if ("error" in result) {
         toast.error(result.error);
         setName(setlist.name);
       }
@@ -120,7 +107,7 @@ export function SetlistEditor({
     const newVenue = venue.trim() || null;
     if (newVenue !== setlist.venue) {
       const result = await updateSetlist(setlist.id, { venue: newVenue });
-      if (result.error) {
+      if ("error" in result) {
         toast.error(result.error);
         setVenue(setlist.venue ?? "");
       }
@@ -132,7 +119,7 @@ export function SetlistEditor({
     const newDate = gigDate || null;
     if (newDate !== setlist.gig_date) {
       const result = await updateSetlist(setlist.id, { gig_date: newDate });
-      if (result.error) {
+      if ("error" in result) {
         toast.error(result.error);
         setGigDate(setlist.gig_date ?? "");
       }
@@ -144,7 +131,7 @@ export function SetlistEditor({
     if (notesTimeoutRef.current) clearTimeout(notesTimeoutRef.current);
     notesTimeoutRef.current = setTimeout(async () => {
       const result = await updateSetlist(setlist.id, { notes: value || null });
-      if (result.error) toast.error(result.error);
+      if ("error" in result) toast.error(result.error);
     }, 500);
   }, [setlist.id]);
 
@@ -159,13 +146,11 @@ export function SetlistEditor({
     spotify_uri?: string;
   }) {
     const result = await effectiveAddSong(setlist.id, songInput);
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       return;
     }
-    if (result.song) {
-      setSongs((prev) => [...prev, result.song as SongItem]);
-    }
+    setSongs((prev) => [...prev, result.data.song]);
     setShowAddModal(false);
     setShowSpotify(false);
   }
@@ -173,7 +158,7 @@ export function SetlistEditor({
   async function handleRemoveSong(songId: string) {
     setSongs((prev) => prev.filter((s) => s.id !== songId));
     const result = await effectiveRemoveSong(setlist.id, songId);
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       router.refresh();
     }
@@ -192,7 +177,7 @@ export function SetlistEditor({
       prev.map((s) => (s.id === songId ? { ...s, ...input } : s))
     );
     const result = await updateSong(songId, input);
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       router.refresh();
     }
@@ -203,7 +188,7 @@ export function SetlistEditor({
       prev.map((s) => (s.setlistSongId === setlistSongId ? { ...s, transitionNotes: transNotes } : s))
     );
     const result = await updateTransitionNotes(setlistSongId, transNotes);
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       router.refresh();
     }
@@ -214,19 +199,17 @@ export function SetlistEditor({
       title: BREAK_SENTINEL,
       duration_ms: 15 * 60 * 1000, // 15 min default
     });
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       return;
     }
-    if (result.song) {
-      setSongs((prev) => [...prev, result.song as SongItem]);
-    }
+    setSongs((prev) => [...prev, result.data.song]);
   }
 
   async function handleDelete() {
     if (!confirm("Delete this setlist? This cannot be undone.")) return;
     const result = await deleteSetlist(setlist.id);
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       return;
     }
@@ -236,7 +219,7 @@ export function SetlistEditor({
 
   async function handleArchive() {
     const result = await archiveSetlist(setlist.id);
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       return;
     }
@@ -246,14 +229,12 @@ export function SetlistEditor({
 
   async function handleDuplicate() {
     const result = await duplicateSetlist(setlist.id);
-    if (result.error) {
+    if ("error" in result) {
       toast.error(result.error);
       return;
     }
-    if (result.id) {
-      toast.success("Setlist duplicated");
-      router.push(`/setlists/${result.id}`);
-    }
+    toast.success("Setlist duplicated");
+    router.push(`/setlists/${result.data.id}`);
   }
 
   return (

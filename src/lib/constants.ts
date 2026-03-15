@@ -30,3 +30,5 @@ export const MUSICAL_KEYS = [
 ] as const;
 
 export const KEY_QUALITIES = ["major", "minor"] as const;
+
+export const BREAK_SENTINEL = "___SET_BREAK___";

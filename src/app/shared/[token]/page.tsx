@@ -4,7 +4,8 @@ import { Music, MapPin, Calendar, Clock } from "lucide-react";
 import { getSharedSetlist } from "@/actions/share-actions";
 import { formatDuration, formatDurationShort, formatGigDate } from "@/lib/utils";
 import { SharedSetlistEditor } from "@/components/setlist/SharedSetlistEditor";
-import type { SongItem } from "@/components/setlist/SetlistEditor";
+import { mapSetlistSongs } from "@/lib/types";
+import type { SongItem, SetlistSongRow } from "@/lib/types";
 
 interface SharedPageProps {
   params: Promise<{ token: string }>;
@@ -21,20 +22,7 @@ export default async function SharedSetlistPage({ params }: SharedPageProps) {
   const setlist = result.data;
   const permission = result.permission;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const songs = (setlist.setlist_songs ?? []).map((ss: any) => ({
-    id: ss.song.id,
-    setlistSongId: ss.id,
-    position: ss.position,
-    title: ss.song.title,
-    artist: ss.song.artist,
-    duration_ms: ss.song.duration_ms,
-    bpm: ss.song.bpm,
-    key: ss.song.key,
-    notes: ss.song.notes,
-    spotify_uri: ss.song.spotify_uri ?? null,
-    transitionNotes: ss.transition_notes ?? null,
-  })) as SongItem[];
+  const songs = mapSetlistSongs((setlist.setlist_songs ?? []) as unknown as SetlistSongRow[]);
 
   const totalMs = songs.reduce(
     (sum: number, s: SongItem) => sum + (s.duration_ms ?? 0),

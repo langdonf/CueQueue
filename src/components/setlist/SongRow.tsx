@@ -1,7 +1,7 @@
 import { GripVertical, X, ArrowRight } from "lucide-react";
 import { formatDurationShort } from "@/lib/utils";
-import type { SongItem } from "./SetlistEditor";
-import { BREAK_SENTINEL } from "./SetlistEditor";
+import type { SongItem } from "@/lib/types";
+import { BREAK_SENTINEL } from "@/lib/constants";
 
 interface SongRowProps {
   song: SongItem;

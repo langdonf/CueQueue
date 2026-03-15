@@ -34,8 +34,6 @@ export async function POST(request: Request) {
       const userId = session.metadata?.supabase_user_id;
 
       if (userId) {
-        // Use upsert so the profile is created if it doesn't exist yet
-        // (e.g. if the user deleted their profile or the trigger didn't fire)
         const { error } = await admin
           .from("profiles")
           .upsert({
@@ -47,6 +45,7 @@ export async function POST(request: Request) {
 
         if (error) {
           console.error("Failed to upsert profile for checkout:", error);
+          return NextResponse.json({ error: "Database error" }, { status: 500 });
         }
       }
       break;
@@ -67,6 +66,7 @@ export async function POST(request: Request) {
 
         if (error) {
           console.error("Failed to update profile for subscription change:", error);
+          return NextResponse.json({ error: "Database error" }, { status: 500 });
         }
       }
       break;
@@ -84,6 +84,7 @@ export async function POST(request: Request) {
 
         if (error) {
           console.error("Failed to update profile for subscription deletion:", error);
+          return NextResponse.json({ error: "Database error" }, { status: 500 });
         }
       }
       break;

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ArrowLeft, Printer, Copy, Check } from "lucide-react";
 import { useState } from "react";
 import { formatGigDate, formatDurationShort } from "@/lib/utils";
-import { BREAK_SENTINEL } from "@/components/setlist/SetlistEditor";
+import { BREAK_SENTINEL } from "@/lib/constants";
+import { toast } from "sonner";
 
 interface ExportSong {
   id: string;
@@ -83,9 +84,13 @@ export function ExportView({ setlist, songs, setlistId }: ExportViewProps) {
   }
 
   async function handleCopyText() {
-    await navigator.clipboard.writeText(generateText());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(generateText());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
   }
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
-import { SetlistEditor, type SongItem } from "./SetlistEditor";
+import { SetlistEditor } from "./SetlistEditor";
+import type { SongItem } from "@/lib/types";
 import {
   sharedAddSongToSetlist,
   sharedRemoveSongFromSetlist,

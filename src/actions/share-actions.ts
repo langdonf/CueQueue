@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { withAuth } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requirePro } from "@/lib/subscription";
 
@@ -9,72 +9,80 @@ export async function createShareLink(
   setlistId: string,
   permission: "view" | "edit" = "view"
 ) {
-  const supabase = await createSupabaseServerClient();
+  return withAuth(async (supabase, user) => {
+    // Pro gate: sharing requires Pro subscription
+    const proError = await requirePro();
+    if (proError) return proError;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+    // Verify user owns this setlist
+    const { data: setlist } = await supabase
+      .from("setlists")
+      .select("id")
+      .eq("id", setlistId)
+      .eq("user_id", user.id)
+      .single();
 
-  // Pro gate: sharing requires Pro subscription
-  const proError = await requirePro();
-  if (proError) return proError;
+    if (!setlist) return { error: "Setlist not found" };
 
-  // Verify user owns this setlist
-  const { data: setlist } = await supabase
-    .from("setlists")
-    .select("id")
-    .eq("id", setlistId)
-    .eq("user_id", user.id)
-    .single();
+    const { data, error } = await supabase
+      .from("share_links")
+      .insert({
+        setlist_id: setlistId,
+        permission,
+      })
+      .select("id, token, permission")
+      .single();
 
-  if (!setlist) return { error: "Setlist not found" };
+    if (error) return { error: error.message };
 
-  const { data, error } = await supabase
-    .from("share_links")
-    .insert({
-      setlist_id: setlistId,
-      permission,
-    })
-    .select("id, token, permission")
-    .single();
-
-  if (error) return { error: error.message };
-
-  revalidatePath(`/setlists/${setlistId}/share`);
-  return { data };
+    revalidatePath(`/setlists/${setlistId}/share`);
+    return { data };
+  });
 }
 
 export async function revokeShareLink(linkId: string) {
-  const supabase = await createSupabaseServerClient();
+  return withAuth(async (supabase, user) => {
+    // Verify ownership: share_link -> setlist -> user
+    const { data: link } = await supabase
+      .from("share_links")
+      .select("setlist_id")
+      .eq("id", linkId)
+      .single();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+    if (!link) return { error: "Share link not found" };
 
-  const { error } = await supabase
-    .from("share_links")
-    .update({ is_active: false })
-    .eq("id", linkId);
+    const { data: setlist } = await supabase
+      .from("setlists")
+      .select("id")
+      .eq("id", link.setlist_id)
+      .eq("user_id", user.id)
+      .single();
 
-  if (error) return { error: error.message };
+    if (!setlist) return { error: "Not authorized" };
 
-  return { success: true };
+    const { error } = await supabase
+      .from("share_links")
+      .update({ is_active: false })
+      .eq("id", linkId);
+
+    if (error) return { error: error.message };
+
+    return { data: undefined };
+  });
 }
 
 export async function getShareLinks(setlistId: string) {
-  const supabase = await createSupabaseServerClient();
+  return withAuth(async (supabase) => {
+    const { data, error } = await supabase
+      .from("share_links")
+      .select("id, token, permission, is_active, created_at")
+      .eq("setlist_id", setlistId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
 
-  const { data, error } = await supabase
-    .from("share_links")
-    .select("id, token, permission, is_active, created_at")
-    .eq("setlist_id", setlistId)
-    .eq("is_active", true)
-    .order("created_at", { ascending: false });
-
-  if (error) return { error: error.message };
-  return { data };
+    if (error) return { error: error.message };
+    return { data };
+  });
 }
 
 export async function getSharedSetlist(token: string) {

@@ -1,254 +1,222 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { withAuth } from "@/lib/auth";
+import type { CreateSongInput, UpdateSongInput, SongItem } from "@/lib/types";
 
 const MAX_SONGS_PER_SETLIST = 100;
-
-interface CreateSongInput {
-  title: string;
-  artist?: string | null;
-  duration_ms?: number | null;
-  bpm?: number | null;
-  key?: string | null;
-  spotify_track_id?: string | null;
-  spotify_uri?: string | null;
-  notes?: string | null;
-}
-
-interface UpdateSongInput {
-  title?: string;
-  artist?: string | null;
-  duration_ms?: number | null;
-  bpm?: number | null;
-  key?: string | null;
-  notes?: string | null;
-}
 
 export async function addSongToSetlist(
   setlistId: string,
   songInput: CreateSongInput
 ) {
-  const supabase = await createSupabaseServerClient();
+  return withAuth(async (supabase, user) => {
+    // Enforce max songs per setlist
+    const { count } = await supabase
+      .from("setlist_songs")
+      .select("*", { count: "exact", head: true })
+      .eq("setlist_id", setlistId);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+    if (count !== null && count >= MAX_SONGS_PER_SETLIST) {
+      return { error: `Setlists are limited to ${MAX_SONGS_PER_SETLIST} songs.` };
+    }
 
-  // Enforce max songs per setlist
-  const { count } = await supabase
-    .from("setlist_songs")
-    .select("*", { count: "exact", head: true })
-    .eq("setlist_id", setlistId);
+    // Create the song
+    const { data: song, error: songError } = await supabase
+      .from("songs")
+      .insert({
+        user_id: user.id,
+        title: songInput.title,
+        artist: songInput.artist,
+        duration_ms: songInput.duration_ms,
+        bpm: songInput.bpm,
+        key: songInput.key,
+        spotify_track_id: songInput.spotify_track_id,
+        spotify_uri: songInput.spotify_uri,
+        notes: songInput.notes,
+      })
+      .select("*")
+      .single();
 
-  if (count !== null && count >= MAX_SONGS_PER_SETLIST) {
-    return { error: `Setlists are limited to ${MAX_SONGS_PER_SETLIST} songs.` };
-  }
+    if (songError) return { error: songError.message };
 
-  // Create the song
-  const { data: song, error: songError } = await supabase
-    .from("songs")
-    .insert({
-      user_id: user.id,
-      title: songInput.title,
-      artist: songInput.artist,
-      duration_ms: songInput.duration_ms,
-      bpm: songInput.bpm,
-      key: songInput.key,
-      spotify_track_id: songInput.spotify_track_id,
-      spotify_uri: songInput.spotify_uri,
-      notes: songInput.notes,
-    })
-    .select("*")
-    .single();
+    // Get the next position
+    const { data: existing } = await supabase
+      .from("setlist_songs")
+      .select("position")
+      .eq("setlist_id", setlistId)
+      .order("position", { ascending: false })
+      .limit(1);
 
-  if (songError) return { error: songError.message };
+    const nextPosition = existing && existing.length > 0 ? existing[0].position + 1 : 0;
 
-  // Get the next position
-  const { data: existing } = await supabase
-    .from("setlist_songs")
-    .select("position")
-    .eq("setlist_id", setlistId)
-    .order("position", { ascending: false })
-    .limit(1);
+    // Create the junction entry
+    const { data: junction, error: junctionError } = await supabase
+      .from("setlist_songs")
+      .insert({
+        setlist_id: setlistId,
+        song_id: song.id,
+        position: nextPosition,
+      })
+      .select("id")
+      .single();
 
-  const nextPosition = existing && existing.length > 0 ? existing[0].position + 1 : 0;
+    if (junctionError) return { error: junctionError.message };
 
-  // Create the junction entry
-  const { data: junction, error: junctionError } = await supabase
-    .from("setlist_songs")
-    .insert({
-      setlist_id: setlistId,
-      song_id: song.id,
-      position: nextPosition,
-    })
-    .select("id")
-    .single();
+    // Update setlist timestamp
+    await supabase
+      .from("setlists")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", setlistId);
 
-  if (junctionError) return { error: junctionError.message };
-
-  // Update setlist timestamp
-  await supabase
-    .from("setlists")
-    .update({ updated_at: new Date().toISOString() })
-    .eq("id", setlistId);
-
-  revalidatePath(`/setlists/${setlistId}`);
-  return {
-    song: {
-      id: song.id,
-      setlistSongId: junction.id,
-      position: nextPosition,
-      title: song.title,
-      artist: song.artist,
-      duration_ms: song.duration_ms,
-      bpm: song.bpm,
-      key: song.key,
-      notes: song.notes,
-      spotify_uri: song.spotify_uri,
-      transitionNotes: null,
-    },
-  };
+    revalidatePath(`/setlists/${setlistId}`);
+    return {
+      data: {
+        song: {
+          id: song.id,
+          setlistSongId: junction.id,
+          position: nextPosition,
+          title: song.title,
+          artist: song.artist,
+          duration_ms: song.duration_ms,
+          bpm: song.bpm,
+          key: song.key,
+          notes: song.notes,
+          spotify_uri: song.spotify_uri,
+          transitionNotes: null,
+        } as SongItem,
+      },
+    };
+  });
 }
 
 export async function updateSong(songId: string, input: UpdateSongInput) {
-  const supabase = await createSupabaseServerClient();
+  return withAuth(async (supabase, user) => {
+    const { error } = await supabase
+      .from("songs")
+      .update({
+        ...input,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", songId)
+      .eq("user_id", user.id);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+    if (error) return { error: error.message };
 
-  const { error } = await supabase
-    .from("songs")
-    .update({
-      ...input,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", songId)
-    .eq("user_id", user.id);
-
-  if (error) return { error: error.message };
-
-  return { success: true };
+    return { data: undefined };
+  });
 }
 
 export async function removeSongFromSetlist(
   setlistId: string,
   songId: string
 ) {
-  const supabase = await createSupabaseServerClient();
+  return withAuth(async (supabase, user) => {
+    // Verify setlist ownership before removing
+    const { data: setlist } = await supabase
+      .from("setlists")
+      .select("id")
+      .eq("id", setlistId)
+      .eq("user_id", user.id)
+      .single();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+    if (!setlist) return { error: "Setlist not found" };
 
-  // Remove the junction entry
-  const { error } = await supabase
-    .from("setlist_songs")
-    .delete()
-    .eq("setlist_id", setlistId)
-    .eq("song_id", songId);
+    // Remove the junction entry
+    const { error } = await supabase
+      .from("setlist_songs")
+      .delete()
+      .eq("setlist_id", setlistId)
+      .eq("song_id", songId);
 
-  if (error) return { error: error.message };
+    if (error) return { error: error.message };
 
-  // Recompact positions
-  const { data: remaining } = await supabase
-    .from("setlist_songs")
-    .select("id")
-    .eq("setlist_id", setlistId)
-    .order("position", { ascending: true });
+    // Recompact positions in a single RPC call
+    await supabase.rpc("recompact_setlist_positions", { p_setlist_id: setlistId });
 
-  if (remaining) {
-    for (let i = 0; i < remaining.length; i++) {
-      await supabase
-        .from("setlist_songs")
-        .update({ position: i })
-        .eq("id", remaining[i].id);
-    }
-  }
+    // Update setlist timestamp
+    await supabase
+      .from("setlists")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", setlistId);
 
-  // Update setlist timestamp
-  await supabase
-    .from("setlists")
-    .update({ updated_at: new Date().toISOString() })
-    .eq("id", setlistId);
-
-  revalidatePath(`/setlists/${setlistId}`);
-  return { success: true };
+    revalidatePath(`/setlists/${setlistId}`);
+    return { data: undefined };
+  });
 }
 
 export async function updateTransitionNotes(
   setlistSongId: string,
   transitionNotes: string | null
 ) {
-  const supabase = await createSupabaseServerClient();
+  return withAuth(async (supabase, user) => {
+    // Verify ownership: setlist_song -> setlist -> user
+    const { data: setlistSong } = await supabase
+      .from("setlist_songs")
+      .select("setlist_id")
+      .eq("id", setlistSongId)
+      .single();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+    if (!setlistSong) return { error: "Song link not found" };
 
-  const { error } = await supabase
-    .from("setlist_songs")
-    .update({ transition_notes: transitionNotes })
-    .eq("id", setlistSongId);
+    const { data: setlist } = await supabase
+      .from("setlists")
+      .select("id")
+      .eq("id", setlistSong.setlist_id)
+      .eq("user_id", user.id)
+      .single();
 
-  if (error) return { error: error.message };
+    if (!setlist) return { error: "Not authorized" };
 
-  return { success: true };
+    const { error } = await supabase
+      .from("setlist_songs")
+      .update({ transition_notes: transitionNotes })
+      .eq("id", setlistSongId);
+
+    if (error) return { error: error.message };
+
+    return { data: undefined };
+  });
 }
 
 export async function getLibrarySongs() {
-  const supabase = await createSupabaseServerClient();
+  return withAuth(async (supabase, user) => {
+    // Get all user songs, most recent first
+    const { data, error } = await supabase
+      .from("songs")
+      .select("id, title, artist, duration_ms, bpm, key, notes")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated", songs: [] };
+    if (error) return { error: error.message };
 
-  // Get all user songs, most recent first
-  const { data, error } = await supabase
-    .from("songs")
-    .select("id, title, artist, duration_ms, bpm, key, notes")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+    // Deduplicate by title+artist (keep first = most recent)
+    const seen = new Set<string>();
+    const unique = (data ?? []).filter((song) => {
+      const dedupeKey = `${song.title?.toLowerCase()}|${song.artist?.toLowerCase() ?? ""}`;
+      if (seen.has(dedupeKey)) return false;
+      seen.add(dedupeKey);
+      return true;
+    });
 
-  if (error) return { error: error.message, songs: [] };
-
-  // Deduplicate by title+artist (keep first = most recent)
-  const seen = new Set<string>();
-  const unique = (data ?? []).filter((song) => {
-    const dedupeKey = `${song.title?.toLowerCase()}|${song.artist?.toLowerCase() ?? ""}`;
-    if (seen.has(dedupeKey)) return false;
-    seen.add(dedupeKey);
-    return true;
+    return { data: { songs: unique } };
   });
-
-  return { songs: unique };
 }
 
 export async function reorderSongs(
   setlistId: string,
   orderedSongIds: string[]
 ) {
-  const supabase = await createSupabaseServerClient();
+  return withAuth(async (supabase) => {
+    // Use RPC to reorder in a single transaction (avoids unique constraint conflicts)
+    const { error } = await supabase.rpc("reorder_setlist_songs", {
+      p_setlist_id: setlistId,
+      p_song_ids: orderedSongIds,
+    });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+    if (error) return { error: error.message };
 
-  // Use RPC to reorder in a single transaction (avoids unique constraint conflicts)
-  const { error } = await supabase.rpc("reorder_setlist_songs", {
-    p_setlist_id: setlistId,
-    p_song_ids: orderedSongIds,
+    revalidatePath(`/setlists/${setlistId}`);
+    return { data: undefined };
   });
-
-  if (error) return { error: error.message };
-
-  revalidatePath(`/setlists/${setlistId}`);
-  return { success: true };
 }

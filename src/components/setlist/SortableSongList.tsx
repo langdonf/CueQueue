@@ -20,7 +20,7 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { SongRow } from "./SongRow";
 import { toast } from "sonner";
-import type { SongItem } from "./SetlistEditor";
+import type { SongItem } from "@/lib/types";
 import { ListMusic } from "lucide-react";
 
 interface SortableSongListProps {

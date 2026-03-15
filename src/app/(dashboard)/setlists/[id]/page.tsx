@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Radio, Share2, FileDown } from "lucide-react";
 import { getSetlist } from "@/actions/setlist-actions";
 import { SetlistEditor } from "@/components/setlist/SetlistEditor";
+import { mapSetlistSongs } from "@/lib/types";
 
 interface SetlistPageProps {
   params: Promise<{ id: string }>;
@@ -12,18 +13,12 @@ export default async function SetlistPage({ params }: SetlistPageProps) {
   const { id } = await params;
   const result = await getSetlist(id);
 
-  if (result.error || !result.data) {
+  if (!("data" in result) || !result.data) {
     notFound();
   }
 
   const setlist = result.data;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const songs = (setlist.setlist_songs ?? []).map((ss: any) => ({
-    setlistSongId: ss.id,
-    position: ss.position,
-    transitionNotes: ss.transition_notes,
-    ...ss.song,
-  }));
+  const songs = mapSetlistSongs(setlist.setlist_songs ?? []);
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-2xl mx-auto">
