@@ -18,14 +18,14 @@ export default function HomePage() {
         </div>
         <Link
           href="/login"
-          className="text-sm text-[#8a8078] hover:text-[#e8e0d4] transition-colors"
+          className="px-4 py-1.5 text-sm text-[#e8e0d4] border border-[#352f28] rounded-lg hover:bg-[#1a1816] transition-colors"
         >
           Sign in
         </Link>
       </header>
 
       {/* Hero */}
-      <main className="flex-1 flex flex-col px-6 sm:px-10 pt-24 sm:pt-32 max-w-2xl mx-auto w-full">
+      <main className="flex flex-col px-6 sm:px-10 pt-24 sm:pt-32 max-w-2xl mx-auto w-full">
         <h1
           className="splash-fade-in text-4xl sm:text-5xl lg:text-6xl tracking-tight text-[#e8e0d4] text-center sm:text-left"
           style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}
@@ -40,17 +40,23 @@ export default function HomePage() {
           Go live on stage.
         </p>
 
-        <div className="splash-fade-in-d2 mt-10 flex justify-center sm:justify-start">
+        <div className="splash-fade-in-d2 mt-10 flex flex-col items-center sm:items-start gap-4">
           <Link
             href="/signup"
             className="px-6 py-2.5 text-sm text-[#e8e0d4] border border-[#352f28] rounded-lg hover:bg-[#1a1816] transition-colors"
           >
-            Start building
+            Get started — it&apos;s free
           </Link>
+          <p className="text-sm text-[#5a554e]">
+            Already have an account?{" "}
+            <Link href="/login" className="text-[#d4a574] hover:underline">
+              Sign in
+            </Link>
+          </p>
         </div>
 
         {/* Feature highlights */}
-        <div className="splash-fade-in-d3 mt-24 sm:mt-32 grid grid-cols-1 sm:grid-cols-3 gap-10 sm:gap-8 w-full">
+        <div className="splash-fade-in-d3 mt-16 sm:mt-20 grid grid-cols-1 sm:grid-cols-3 gap-10 sm:gap-8 w-full">
           <div className="border-t border-[#252320] pt-4">
             <h3 className="text-sm font-medium text-[#e8e0d4]">
               Build & Reorder

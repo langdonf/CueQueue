@@ -71,6 +71,13 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
 
+  // Redirect logged-in users from splash page to their setlists
+  if (pathname === "/" && user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/setlists";
+    return NextResponse.redirect(url);
+  }
+
   // Allow public routes
   if (
     pathname === "/" ||

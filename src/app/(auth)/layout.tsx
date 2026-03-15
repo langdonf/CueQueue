@@ -8,8 +8,8 @@ export default function AuthLayout({
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6">
       <div className="flex items-center gap-2 mb-10">
-        <Music className="w-6 h-6 text-primary" />
-        <span className="text-xl font-medium">SetList</span>
+        <Music className="w-8 h-8 text-primary" />
+        <span className="text-4xl font-medium">SetList</span>
       </div>
       <div className="w-full max-w-sm">{children}</div>
     </div>

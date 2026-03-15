@@ -134,6 +134,8 @@ export default function LoginForm() {
       <form onSubmit={handleLogin} className="flex flex-col gap-4">
         <input
           type="email"
+          name="email"
+          autoComplete="email"
           placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
