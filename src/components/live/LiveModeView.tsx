@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { formatDurationShort } from "@/lib/utils";
+import { BREAK_SENTINEL } from "@/components/setlist/SetlistEditor";
 
 interface LiveSong {
   id: string;
@@ -13,12 +14,14 @@ interface LiveSong {
   bpm: number | null;
   key: string | null;
   notes: string | null;
+  transitionNotes?: string | null;
 }
 
 interface LiveModeViewProps {
   setlistName: string;
   setlistId: string;
   songs: LiveSong[];
+  setlistNotes?: string | null;
 }
 
 const SWIPE_THRESHOLD = 50;
@@ -27,6 +30,7 @@ export function LiveModeView({
   setlistName,
   setlistId,
   songs,
+  setlistNotes,
 }: LiveModeViewProps) {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -37,6 +41,7 @@ export function LiveModeView({
   const currentSong = songs[currentIndex];
   const isFirst = currentIndex === 0;
   const isLast = currentIndex === songs.length - 1;
+  const isBreak = currentSong?.title === BREAK_SENTINEL;
 
   // All songs after the first — always rendered, played ones collapse via grid
   const allUpcoming = songs.slice(1);
@@ -114,6 +119,12 @@ export function LiveModeView({
     return { scale, opacity, py };
   }
 
+  // Get the display number for a song (skipping breaks)
+  function getSongNumber(index: number): number | null {
+    if (songs[index].title === BREAK_SENTINEL) return null;
+    return songs.slice(0, index).filter((s) => s.title !== BREAK_SENTINEL).length + 1;
+  }
+
   if (songs.length === 0) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center text-white">
@@ -148,9 +159,16 @@ export function LiveModeView({
         </span>
       </div>
 
+      {/* Pinned setlist notes */}
+      {setlistNotes && currentIndex === 0 && (
+        <div className="mx-4 mb-2 px-3 py-2 bg-white/5 rounded-lg text-xs text-white/50 leading-relaxed max-h-16 overflow-y-auto">
+          {setlistNotes}
+        </div>
+      )}
+
       {/* Teleprompter content */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* ═══ CURRENT SONG — tap to go back ═══ */}
+        {/* ═══ CURRENT SONG / BREAK — tap to go back ═══ */}
         <button
           onClick={goBack}
           disabled={isFirst}
@@ -158,41 +176,67 @@ export function LiveModeView({
           style={{ minHeight: "35vh" }}
           aria-label="Previous song"
         >
-          <div>
-            <h1 className="text-3xl sm:text-5xl font-bold leading-tight">
-              {currentSong.title}
-            </h1>
-            {currentSong.artist && (
-              <p className="mt-2 text-lg sm:text-xl text-white/60">
-                {currentSong.artist}
-              </p>
-            )}
-
-            {/* Metadata badges */}
-            <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
-              {currentSong.key && (
-                <span className="px-3 py-1 bg-white/10 rounded-full text-sm font-mono">
-                  {currentSong.key}
-                </span>
-              )}
-              {currentSong.bpm && (
-                <span className="px-3 py-1 bg-white/10 rounded-full text-sm font-mono">
-                  {currentSong.bpm} BPM
-                </span>
-              )}
+          {isBreak ? (
+            /* Break card */
+            <div>
+              <div className="flex items-center gap-4 justify-center mb-4">
+                <div className="w-16 h-px bg-white/20" />
+                <h1 className="text-2xl sm:text-3xl font-bold uppercase tracking-widest text-white/70">
+                  Set Break
+                </h1>
+                <div className="w-16 h-px bg-white/20" />
+              </div>
               {currentSong.duration_ms && (
-                <span className="px-3 py-1 bg-white/10 rounded-full text-sm font-mono">
+                <p className="text-xl font-mono text-white/50">
                   {formatDurationShort(currentSong.duration_ms)}
-                </span>
+                </p>
               )}
             </div>
+          ) : (
+            /* Song card */
+            <div>
+              <h1 className="text-3xl sm:text-5xl font-bold leading-tight">
+                {currentSong.title}
+              </h1>
+              {currentSong.artist && (
+                <p className="mt-2 text-lg sm:text-xl text-white/60">
+                  {currentSong.artist}
+                </p>
+              )}
 
-            {currentSong.notes && (
-              <p className="mt-4 text-sm text-white/40 max-w-md mx-auto leading-relaxed">
-                {currentSong.notes}
-              </p>
-            )}
-          </div>
+              {/* Metadata badges */}
+              <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
+                {currentSong.key && (
+                  <span className="px-3 py-1 bg-white/10 rounded-full text-sm font-mono">
+                    {currentSong.key}
+                  </span>
+                )}
+                {currentSong.bpm && (
+                  <span className="px-3 py-1 bg-white/10 rounded-full text-sm font-mono">
+                    {currentSong.bpm} BPM
+                  </span>
+                )}
+                {currentSong.duration_ms && (
+                  <span className="px-3 py-1 bg-white/10 rounded-full text-sm font-mono">
+                    {formatDurationShort(currentSong.duration_ms)}
+                  </span>
+                )}
+              </div>
+
+              {currentSong.notes && (
+                <p className="mt-4 text-sm text-white/40 max-w-md mx-auto leading-relaxed">
+                  {currentSong.notes}
+                </p>
+              )}
+
+              {/* Transition notes for current song */}
+              {currentSong.transitionNotes && (
+                <p className="mt-3 text-sm text-white/30 italic">
+                  → {currentSong.transitionNotes}
+                </p>
+              )}
+            </div>
+          )}
         </button>
 
         {/* ═══ UPCOMING SONGS — tap to advance ═══ */}
@@ -225,6 +269,9 @@ export function LiveModeView({
                     ? { scale: 1, opacity: 0, py: 0 }
                     : getDepthStyle(depthPosition);
 
+                  const isSongBreak = song.title === BREAK_SENTINEL;
+                  const num = getSongNumber(songIndex);
+
                   return (
                     <div
                       key={song.id}
@@ -242,25 +289,42 @@ export function LiveModeView({
                           transition: "all 0.35s ease-out",
                         }}
                       >
-                        <span className="text-2xl font-bold font-mono w-10 text-right shrink-0">
-                          {songIndex + 1}
-                        </span>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="text-lg font-semibold truncate">
-                            {song.title}
-                          </div>
-                          {song.artist && (
-                            <div className="text-sm text-white/50 truncate">
-                              {song.artist}
+                        {isSongBreak ? (
+                          /* Break in upcoming list */
+                          <>
+                            <span className="w-10 shrink-0" />
+                            <div className="flex-1 flex items-center gap-2">
+                              <div className="flex-1 h-px bg-white/20" />
+                              <span className="text-xs uppercase tracking-wider text-white/40 font-medium">
+                                Break
+                              </span>
+                              <div className="flex-1 h-px bg-white/20" />
                             </div>
-                          )}
-                        </div>
+                          </>
+                        ) : (
+                          /* Song in upcoming list */
+                          <>
+                            <span className="text-2xl font-bold font-mono w-10 text-right shrink-0">
+                              {num}
+                            </span>
 
-                        {song.duration_ms && (
-                          <span className="text-sm font-mono shrink-0">
-                            {formatDurationShort(song.duration_ms)}
-                          </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-lg font-semibold truncate">
+                                {song.title}
+                              </div>
+                              {song.artist && (
+                                <div className="text-sm text-white/50 truncate">
+                                  {song.artist}
+                                </div>
+                              )}
+                            </div>
+
+                            {song.duration_ms && (
+                              <span className="text-sm font-mono shrink-0">
+                                {formatDurationShort(song.duration_ms)}
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

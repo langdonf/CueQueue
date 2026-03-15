@@ -25,6 +25,7 @@ export default async function LivePage({ params }: LivePageProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const songs = (result.data.setlist_songs ?? []).map((ss: any) => ({
     position: ss.position,
+    transitionNotes: ss.transition_notes,
     ...ss.song,
   }));
 
@@ -33,6 +34,7 @@ export default async function LivePage({ params }: LivePageProps) {
       setlistName={result.data.name}
       setlistId={id}
       songs={songs}
+      setlistNotes={result.data.notes}
     />
   );
 }
