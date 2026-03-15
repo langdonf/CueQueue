@@ -50,7 +50,6 @@ export function LiveModeView({
 
   const currentSong = songs[currentIndex];
   const isFirst = currentIndex === 0;
-  const isLast = currentIndex === songs.length - 1;
   const isBreak = currentSong?.title === BREAK_SENTINEL;
 
   // Break countdown timer

@@ -11,7 +11,6 @@ interface SettingsClientProps {
   email: string;
   displayName: string | null;
   defaultBreakDurationMs: number;
-  isPro: boolean;
   version: string;
   subscriptionSlot: React.ReactNode;
 }
@@ -24,7 +23,7 @@ const BREAK_OPTIONS = [
   { label: "30 min", value: 30 * 60 * 1000 },
 ];
 
-export function SettingsClient({ email, displayName, defaultBreakDurationMs, isPro, version, subscriptionSlot }: SettingsClientProps) {
+export function SettingsClient({ email, displayName, defaultBreakDurationMs, version, subscriptionSlot }: SettingsClientProps) {
   const router = useRouter();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(displayName ?? "");

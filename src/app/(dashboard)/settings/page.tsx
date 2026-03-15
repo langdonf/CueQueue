@@ -61,7 +61,6 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         email={user.email ?? ""}
         displayName={profile?.display_name ?? null}
         defaultBreakDurationMs={profile?.default_break_duration_ms ?? 900000}
-        isPro={isPro}
         version="0.1.0"
         subscriptionSlot={subscriptionSlot}
       />
