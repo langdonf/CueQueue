@@ -16,7 +16,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "SetList - Build Better Setlists",
+  title: "CueQueue - Build Better Setlists",
   description:
     "Create, organize, and share setlists with your band. Import songs from Spotify, drag to reorder, and go live.",
 };

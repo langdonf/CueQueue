@@ -199,9 +199,9 @@ export function LiveModeView({
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-3 shrink-0">
           <button
-            onClick={goBack}
+            onClick={() => router.push(`/setlists/${setlistId}`)}
             className="p-2 text-white/60 hover:text-white transition-colors"
-            aria-label="Back to last song"
+            aria-label="Exit"
           >
             <X className="w-5 h-5" />
           </button>

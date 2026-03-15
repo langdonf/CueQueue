@@ -35,7 +35,7 @@ export function UpgradePrompt({ feature }: UpgradePromptProps) {
       </div>
       <h2 className="text-xl font-bold mb-2">{feature} is a Pro feature</h2>
       <p className="text-sm text-muted-foreground mb-8 max-w-xs">
-        Upgrade to SetList Pro for just $5/year to unlock {feature}, unlimited
+        Upgrade to CueQueue Pro for just $5/year to unlock {feature}, unlimited
         setlists, and more.
       </p>
       <button

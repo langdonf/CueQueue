@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-SetList is a Next.js 15 app for musicians to create, organize, and share setlists. It uses Supabase for auth/database, Stripe for subscriptions (free/pro tiers), Spotify API for song search, and Tailwind CSS v4 for styling. The app is dark-themed only.
+CueQueue is a Next.js 15 app for musicians to create, organize, and share setlists. It uses Supabase for auth/database, Stripe for subscriptions (free/pro tiers), Spotify API for song search, and Tailwind CSS v4 for styling. The app is dark-themed only.
 
 ## Rules
 

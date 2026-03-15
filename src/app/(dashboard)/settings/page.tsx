@@ -34,7 +34,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         Subscription
       </h2>
       <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">SetList Pro — $5/year</span>
+        <span className="text-muted-foreground">CueQueue Pro — $5/year</span>
         <ManageSubscriptionButton />
       </div>
     </div>

@@ -20,7 +20,7 @@ export function Navbar() {
     <header className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-border">
       <Link href="/setlists" className="flex items-center gap-2">
         <Music className="w-5 h-5 text-primary" />
-        <span className="text-lg font-medium">SetList</span>
+        <span className="text-lg font-medium">CueQueue</span>
       </Link>
 
       <div className="flex items-center gap-2">

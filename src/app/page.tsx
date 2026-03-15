@@ -14,7 +14,7 @@ export default function HomePage() {
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
         <div className="flex items-center gap-2">
           <Music className="w-5 h-5 text-[#d4a574]" />
-          <span className="text-lg font-medium text-[#e8e0d4]">SetList</span>
+          <span className="text-lg font-medium text-[#e8e0d4]">CueQueue</span>
         </div>
         <Link
           href="/login"

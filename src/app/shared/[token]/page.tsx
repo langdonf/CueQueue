@@ -38,7 +38,7 @@ export default async function SharedSetlistPage({ params }: SharedPageProps) {
         <div className="flex items-center gap-2 mb-6">
           <Music className="w-5 h-5 text-primary" />
           <span className="text-sm font-medium text-muted-foreground">
-            SetList
+            CueQueue
           </span>
           <span className="px-2 py-0.5 text-xs bg-primary/10 text-primary rounded-full">
             Editing
@@ -62,7 +62,7 @@ export default async function SharedSetlistPage({ params }: SharedPageProps) {
           <p className="text-sm text-muted-foreground">
             Shared via{" "}
             <Link href="/" className="text-primary hover:underline">
-              SetList
+              CueQueue
             </Link>
           </p>
         </div>
