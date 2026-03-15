@@ -28,6 +28,7 @@ interface SortableSongListProps {
   setSongs: React.Dispatch<React.SetStateAction<SongItem[]>>;
   setlistId: string;
   onRemoveSong: (songId: string) => void;
+  onEditSong?: (song: SongItem) => void;
   reorderSongs: (
     setlistId: string,
     orderedSongIds: string[]
@@ -38,10 +39,12 @@ function SortableSongRow({
   song,
   index,
   onRemove,
+  onEdit,
 }: {
   song: SongItem;
   index: number;
   onRemove: (songId: string) => void;
+  onEdit?: (song: SongItem) => void;
 }) {
   const {
     attributes,
@@ -65,6 +68,7 @@ function SortableSongRow({
         song={song}
         index={index}
         onRemove={onRemove}
+        onEdit={onEdit}
         dragHandleProps={listeners}
       />
     </div>
@@ -76,6 +80,7 @@ export function SortableSongList({
   setSongs,
   setlistId,
   onRemoveSong,
+  onEditSong,
   reorderSongs,
 }: SortableSongListProps) {
   const dndId = useId();
@@ -139,6 +144,7 @@ export function SortableSongList({
               song={song}
               index={index}
               onRemove={onRemoveSong}
+              onEdit={onEditSong}
             />
           ))}
         </div>

@@ -180,6 +180,56 @@ export async function removeSongFromSetlist(
   return { success: true };
 }
 
+export async function updateTransitionNotes(
+  setlistSongId: string,
+  transitionNotes: string | null
+) {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("setlist_songs")
+    .update({ transition_notes: transitionNotes })
+    .eq("id", setlistSongId);
+
+  if (error) return { error: error.message };
+
+  return { success: true };
+}
+
+export async function getLibrarySongs() {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated", songs: [] };
+
+  // Get all user songs, most recent first
+  const { data, error } = await supabase
+    .from("songs")
+    .select("id, title, artist, duration_ms, bpm, key, notes")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) return { error: error.message, songs: [] };
+
+  // Deduplicate by title+artist (keep first = most recent)
+  const seen = new Set<string>();
+  const unique = (data ?? []).filter((song) => {
+    const dedupeKey = `${song.title?.toLowerCase()}|${song.artist?.toLowerCase() ?? ""}`;
+    if (seen.has(dedupeKey)) return false;
+    seen.add(dedupeKey);
+    return true;
+  });
+
+  return { songs: unique };
+}
+
 export async function reorderSongs(
   setlistId: string,
   orderedSongIds: string[]

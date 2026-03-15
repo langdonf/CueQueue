@@ -1,20 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, MoreVertical } from "lucide-react";
-import { updateSetlist, deleteSetlist } from "@/actions/setlist-actions";
+import { Plus, Trash2, MoreVertical, Copy, ChevronDown, ChevronRight, Pause, Archive } from "lucide-react";
+import { updateSetlist, deleteSetlist, duplicateSetlist, archiveSetlist } from "@/actions/setlist-actions";
 import {
   addSongToSetlist,
   removeSongFromSetlist,
   reorderSongs,
+  updateSong,
+  updateTransitionNotes,
 } from "@/actions/song-actions";
 import { SortableSongList } from "./SortableSongList";
 import { AddSongModal } from "./AddSongModal";
+import { EditSongModal } from "./EditSongModal";
 import { SetlistDuration } from "./SetlistDuration";
 import { SpotifySearch } from "@/components/spotify/SpotifySearch";
 import { toast } from "sonner";
 import { formatGigDate } from "@/lib/utils";
+
+export const BREAK_SENTINEL = "___SET_BREAK___";
 
 export interface SongItem {
   id: string;
@@ -75,6 +80,20 @@ export function SetlistEditor({
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(setlist.name);
 
+  // Editable metadata
+  const [editingVenue, setEditingVenue] = useState(false);
+  const [venue, setVenue] = useState(setlist.venue ?? "");
+  const [editingDate, setEditingDate] = useState(false);
+  const [gigDate, setGigDate] = useState(setlist.gig_date ?? "");
+
+  // Notes
+  const [notesExpanded, setNotesExpanded] = useState(!!setlist.notes);
+  const [notes, setNotes] = useState(setlist.notes ?? "");
+  const notesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Edit song modal
+  const [editingSong, setEditingSong] = useState<SongItem | null>(null);
+
   const isOwner = mode === "owner";
 
   // Resolve action functions — use overrides if provided, otherwise defaults
@@ -95,6 +114,39 @@ export function SetlistEditor({
       }
     }
   }
+
+  async function handleVenueSave() {
+    setEditingVenue(false);
+    const newVenue = venue.trim() || null;
+    if (newVenue !== setlist.venue) {
+      const result = await updateSetlist(setlist.id, { venue: newVenue });
+      if (result.error) {
+        toast.error(result.error);
+        setVenue(setlist.venue ?? "");
+      }
+    }
+  }
+
+  async function handleDateSave() {
+    setEditingDate(false);
+    const newDate = gigDate || null;
+    if (newDate !== setlist.gig_date) {
+      const result = await updateSetlist(setlist.id, { gig_date: newDate });
+      if (result.error) {
+        toast.error(result.error);
+        setGigDate(setlist.gig_date ?? "");
+      }
+    }
+  }
+
+  const handleNotesChange = useCallback((value: string) => {
+    setNotes(value);
+    if (notesTimeoutRef.current) clearTimeout(notesTimeoutRef.current);
+    notesTimeoutRef.current = setTimeout(async () => {
+      const result = await updateSetlist(setlist.id, { notes: value || null });
+      if (result.error) toast.error(result.error);
+    }, 500);
+  }, [setlist.id]);
 
   async function handleAddSong(songInput: {
     title: string;
@@ -127,6 +179,50 @@ export function SetlistEditor({
     }
   }
 
+  async function handleEditSong(songId: string, input: {
+    title?: string;
+    artist?: string | null;
+    duration_ms?: number | null;
+    bpm?: number | null;
+    key?: string | null;
+    notes?: string | null;
+  }) {
+    // Optimistic update
+    setSongs((prev) =>
+      prev.map((s) => (s.id === songId ? { ...s, ...input } : s))
+    );
+    const result = await updateSong(songId, input);
+    if (result.error) {
+      toast.error(result.error);
+      router.refresh();
+    }
+  }
+
+  async function handleUpdateTransitionNotes(setlistSongId: string, songId: string, transNotes: string | null) {
+    setSongs((prev) =>
+      prev.map((s) => (s.setlistSongId === setlistSongId ? { ...s, transitionNotes: transNotes } : s))
+    );
+    const result = await updateTransitionNotes(setlistSongId, transNotes);
+    if (result.error) {
+      toast.error(result.error);
+      router.refresh();
+    }
+  }
+
+  async function handleAddBreak() {
+    const result = await effectiveAddSong(setlist.id, {
+      title: BREAK_SENTINEL,
+      duration_ms: 15 * 60 * 1000, // 15 min default
+    });
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    if (result.song) {
+      setSongs((prev) => [...prev, result.song as SongItem]);
+    }
+  }
+
   async function handleDelete() {
     if (!confirm("Delete this setlist? This cannot be undone.")) return;
     const result = await deleteSetlist(setlist.id);
@@ -136,6 +232,28 @@ export function SetlistEditor({
     }
     toast.success("Setlist deleted");
     router.push("/setlists");
+  }
+
+  async function handleArchive() {
+    const result = await archiveSetlist(setlist.id);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Setlist archived");
+    router.push("/setlists");
+  }
+
+  async function handleDuplicate() {
+    const result = await duplicateSetlist(setlist.id);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    if (result.id) {
+      toast.success("Setlist duplicated");
+      router.push(`/setlists/${result.id}`);
+    }
   }
 
   return (
@@ -172,7 +290,27 @@ export function SetlistEditor({
                   <MoreVertical className="w-5 h-5" />
                 </button>
                 {showMenu && (
-                  <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg py-1 min-w-[140px] z-10">
+                  <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg py-1 min-w-[160px] z-10">
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        handleDuplicate();
+                      }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors"
+                    >
+                      <Copy className="w-4 h-4" />
+                      Duplicate
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        handleArchive();
+                      }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors"
+                    >
+                      <Archive className="w-4 h-4" />
+                      Archive
+                    </button>
                     <button
                       onClick={() => {
                         setShowMenu(false);
@@ -181,7 +319,7 @@ export function SetlistEditor({
                       className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
-                      Delete Setlist
+                      Delete
                     </button>
                   </div>
                 )}
@@ -190,15 +328,85 @@ export function SetlistEditor({
           </div>
         )}
 
-        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-          {setlist.venue && <span>{setlist.venue}</span>}
-          {setlist.venue && setlist.gig_date && (
+        {/* Editable venue & date */}
+        {isOwner ? (
+          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+            {editingVenue ? (
+              <input
+                value={venue}
+                onChange={(e) => setVenue(e.target.value)}
+                onBlur={handleVenueSave}
+                onKeyDown={(e) => e.key === "Enter" && handleVenueSave()}
+                autoFocus
+                placeholder="Add venue..."
+                className="bg-transparent border-b border-primary outline-none text-foreground"
+              />
+            ) : (
+              <button
+                onClick={() => setEditingVenue(true)}
+                className="hover:text-foreground transition-colors"
+              >
+                {venue || "Add venue..."}
+              </button>
+            )}
             <span className="text-border">|</span>
-          )}
-          {setlist.gig_date && (
-            <span>{formatGigDate(setlist.gig_date)}</span>
-          )}
-        </div>
+            {editingDate ? (
+              <input
+                type="date"
+                value={gigDate}
+                onChange={(e) => {
+                  setGigDate(e.target.value);
+                }}
+                onBlur={handleDateSave}
+                autoFocus
+                className="bg-transparent border-b border-primary outline-none text-foreground"
+              />
+            ) : (
+              <button
+                onClick={() => setEditingDate(true)}
+                className="hover:text-foreground transition-colors"
+              >
+                {gigDate ? formatGigDate(gigDate) : "Add date..."}
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+            {setlist.venue && <span>{setlist.venue}</span>}
+            {setlist.venue && setlist.gig_date && (
+              <span className="text-border">|</span>
+            )}
+            {setlist.gig_date && (
+              <span>{formatGigDate(setlist.gig_date)}</span>
+            )}
+          </div>
+        )}
+
+        {/* Collapsible notes */}
+        {isOwner && (
+          <div className="mt-3">
+            <button
+              onClick={() => setNotesExpanded(!notesExpanded)}
+              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {notesExpanded ? (
+                <ChevronDown className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5" />
+              )}
+              {notes ? "Notes" : "Add notes..."}
+            </button>
+            {notesExpanded && (
+              <textarea
+                value={notes}
+                onChange={(e) => handleNotesChange(e.target.value)}
+                placeholder="Setlist notes — e.g. 'Start acoustic, switch to electric after song 3'"
+                rows={3}
+                className="mt-2 w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Duration bar */}
@@ -210,6 +418,7 @@ export function SetlistEditor({
         setSongs={setSongs}
         setlistId={setlist.id}
         onRemoveSong={handleRemoveSong}
+        onEditSong={(song) => setEditingSong(song)}
         reorderSongs={effectiveReorderSongs}
       />
 
@@ -231,6 +440,13 @@ export function SetlistEditor({
           </svg>
           Spotify
         </button>
+        <button
+          onClick={handleAddBreak}
+          className="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+          title="Add set break"
+        >
+          <Pause className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Modals */}
@@ -238,6 +454,7 @@ export function SetlistEditor({
         <AddSongModal
           onAdd={handleAddSong}
           onClose={() => setShowAddModal(false)}
+          setlistId={setlist.id}
         />
       )}
 
@@ -246,6 +463,20 @@ export function SetlistEditor({
           onAdd={handleAddSong}
           onClose={() => setShowSpotify(false)}
           shareToken={shareToken}
+        />
+      )}
+
+      {editingSong && (
+        <EditSongModal
+          song={editingSong}
+          onSave={async (input) => {
+            await handleEditSong(editingSong.id, input);
+            setEditingSong(null);
+          }}
+          onUpdateTransitionNotes={async (transNotes) => {
+            await handleUpdateTransitionNotes(editingSong.setlistSongId, editingSong.id, transNotes);
+          }}
+          onClose={() => setEditingSong(null)}
         />
       )}
     </div>
