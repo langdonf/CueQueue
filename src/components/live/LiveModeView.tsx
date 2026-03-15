@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { formatDurationShort } from "@/lib/utils";
 import { BREAK_SENTINEL } from "@/lib/constants";
 import { useRealtimeSetlist } from "@/hooks/useRealtimeSetlist";
+import { updateSetlist } from "@/actions/setlist-actions";
 
 import type { SongItem } from "@/lib/types";
 
@@ -41,6 +42,11 @@ export function LiveModeView({
 
   const touchStartY = useRef<number | null>(null);
   const touchStartX = useRef<number | null>(null);
+
+  const [finished, setFinished] = useState(false);
+  const [wrapUpNotes, setWrapUpNotes] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
 
   const currentSong = songs[currentIndex];
   const isFirst = currentIndex === 0;
@@ -82,14 +88,22 @@ export function LiveModeView({
   const allUpcoming = songs.slice(1);
 
   const advance = useCallback(() => {
-    if (currentIndex >= songs.length - 1) return;
+    if (finished) return;
+    if (currentIndex >= songs.length - 1) {
+      setFinished(true);
+      return;
+    }
     setCurrentIndex((i) => i + 1);
-  }, [currentIndex, songs.length]);
+  }, [currentIndex, songs.length, finished]);
 
   const goBack = useCallback(() => {
+    if (finished) {
+      setFinished(false);
+      return;
+    }
     if (currentIndex <= 0) return;
     setCurrentIndex((i) => i - 1);
-  }, [currentIndex]);
+  }, [currentIndex, finished]);
 
   // Wake Lock
   useEffect(() => {
@@ -115,6 +129,8 @@ export function LiveModeView({
   // Keyboard navigation
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "TEXTAREA" || tag === "INPUT") return;
       if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " ") {
         e.preventDefault();
         advance();
@@ -158,6 +174,93 @@ export function LiveModeView({
   function getSongNumber(index: number): number | null {
     if (songs[index].title === BREAK_SENTINEL) return null;
     return songs.slice(0, index).filter((s) => s.title !== BREAK_SENTINEL).length + 1;
+  }
+
+  async function handleSaveWrapUpNotes() {
+    if (!wrapUpNotes.trim()) {
+      router.push(`/setlists/${setlistId}`);
+      return;
+    }
+    setSavingNotes(true);
+    // Append to existing notes rather than overwriting
+    const newNotes = setlistNotes
+      ? `${setlistNotes}\n\n--- Gig Notes ---\n${wrapUpNotes.trim()}`
+      : wrapUpNotes.trim();
+    await updateSetlist(setlistId, { notes: newNotes });
+    setNotesSaved(true);
+    setSavingNotes(false);
+    setTimeout(() => {
+      router.push(`/setlists/${setlistId}`);
+    }, 1000);
+  }
+
+  if (finished) {
+    return (
+      <div className="fixed inset-0 bg-black text-white flex flex-col z-50">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-4 py-3 shrink-0">
+          <button
+            onClick={goBack}
+            className="p-2 text-white/60 hover:text-white transition-colors"
+            aria-label="Back to last song"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <span className="text-sm text-white/40 font-medium">
+            {setlistName}
+          </span>
+          <div className="w-9" />
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-2">
+            Great show!
+          </h1>
+          <p className="text-white/50 mb-8">
+            How did it go? Jot down any notes while it&apos;s fresh.
+          </p>
+
+          <textarea
+            value={wrapUpNotes}
+            onChange={(e) => setWrapUpNotes(e.target.value)}
+            placeholder="e.g. Crowd loved the opener, skip song 4 next time, need to rehearse the bridge on Free Bird..."
+            rows={5}
+            className="w-full max-w-md px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+            autoFocus
+          />
+
+          <div className="flex gap-3 mt-6 w-full max-w-md">
+            <button
+              onClick={() => router.push(`/setlists/${setlistId}`)}
+              className="flex-1 py-3 text-sm text-white/50 hover:text-white transition-colors"
+            >
+              Skip
+            </button>
+            <button
+              onClick={handleSaveWrapUpNotes}
+              disabled={savingNotes || notesSaved}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {notesSaved ? (
+                "Saved!"
+              ) : savingNotes ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Notes"
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Progress bar — full */}
+        <div className="h-1 bg-white/5 shrink-0">
+          <div className="h-full bg-primary w-full" />
+        </div>
+      </div>
+    );
   }
 
   if (songs.length === 0) {
@@ -281,7 +384,6 @@ export function LiveModeView({
         {/* ═══ UPCOMING SONGS — tap to advance ═══ */}
         <button
           onClick={advance}
-          disabled={isLast}
           className="flex-1 flex flex-col border-t border-white/10 min-h-0 cursor-default text-left overflow-hidden"
           aria-label="Next song"
         >

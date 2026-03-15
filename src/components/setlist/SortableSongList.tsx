@@ -34,6 +34,7 @@ interface SortableSongListProps {
     orderedSongIds: string[]
   ) => Promise<{ error?: string; success?: boolean }>;
   onReorderStarted?: () => void;
+  readOnly?: boolean;
 }
 
 function SortableSongRow({
@@ -41,11 +42,13 @@ function SortableSongRow({
   index,
   onRemove,
   onEdit,
+  readOnly,
 }: {
   song: SongItem;
   index: number;
   onRemove: (songId: string) => void;
   onEdit?: (song: SongItem) => void;
+  readOnly?: boolean;
 }) {
   const {
     attributes,
@@ -54,7 +57,7 @@ function SortableSongRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: song.id });
+  } = useSortable({ id: song.id, disabled: readOnly });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -68,9 +71,9 @@ function SortableSongRow({
       <SongRow
         song={song}
         index={index}
-        onRemove={onRemove}
+        onRemove={readOnly ? undefined : onRemove}
         onEdit={onEdit}
-        dragHandleProps={listeners}
+        dragHandleProps={readOnly ? undefined : listeners}
       />
     </div>
   );
@@ -84,6 +87,7 @@ export function SortableSongList({
   onEditSong,
   reorderSongs,
   onReorderStarted,
+  readOnly = false,
 }: SortableSongListProps) {
   const dndId = useId();
   const sensors = useSensors(
@@ -148,6 +152,7 @@ export function SortableSongList({
               index={index}
               onRemove={onRemoveSong}
               onEdit={onEditSong}
+              readOnly={readOnly}
             />
           ))}
         </div>

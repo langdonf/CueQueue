@@ -118,9 +118,11 @@ export function SpotifySearch({ onAdd, onClose, shareToken }: SpotifySearchProps
           )}
 
           {results.map((track) => (
-            <div
+            <button
               key={track.id}
-              className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors"
+              onClick={() => handleAdd(track)}
+              disabled={addingId === track.id}
+              className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors w-full text-left disabled:opacity-50"
             >
               {/* Album art */}
               {track.albumArt && (
@@ -144,20 +146,15 @@ export function SpotifySearch({ onAdd, onClose, shareToken }: SpotifySearchProps
                 {formatDurationShort(track.duration_ms)}
               </span>
 
-              {/* Add button */}
-              <button
-                onClick={() => handleAdd(track)}
-                disabled={addingId === track.id}
-                className="p-1.5 text-primary hover:bg-primary/10 rounded transition-colors disabled:opacity-50"
-                aria-label={`Add ${track.name}`}
-              >
+              {/* Add icon */}
+              <span className="p-1.5 text-primary shrink-0">
                 {addingId === track.id ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Plus className="w-4 h-4" />
                 )}
-              </button>
-            </div>
+              </span>
+            </button>
           ))}
         </div>
       </div>

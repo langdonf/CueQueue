@@ -6,7 +6,7 @@ import { BREAK_SENTINEL } from "@/lib/constants";
 interface SongRowProps {
   song: SongItem;
   index: number;
-  onRemove: (songId: string) => void;
+  onRemove?: (songId: string) => void;
   onEdit?: (song: SongItem) => void;
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
 }
@@ -17,13 +17,15 @@ export function SongRow({ song, index, onRemove, onEdit, dragHandleProps }: Song
   if (isBreak) {
     return (
       <div className="flex items-center gap-2 px-2 py-2 bg-muted/50 border border-dashed border-border rounded-lg">
-        <button
-          className="p-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
-          aria-label="Drag to reorder"
-          {...dragHandleProps}
-        >
-          <GripVertical className="w-4 h-4" />
-        </button>
+        {dragHandleProps && (
+          <button
+            className="p-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
+            aria-label="Drag to reorder"
+            {...dragHandleProps}
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+        )}
         <div className="flex-1 flex items-center justify-center gap-2">
           <div className="flex-1 h-px bg-border" />
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-2">
@@ -36,13 +38,15 @@ export function SongRow({ song, index, onRemove, onEdit, dragHandleProps }: Song
           </span>
           <div className="flex-1 h-px bg-border" />
         </div>
-        <button
-          onClick={() => onRemove(song.id)}
-          className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-          aria-label="Remove break"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {onRemove && (
+          <button
+            onClick={() => onRemove(song.id)}
+            className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+            aria-label="Remove break"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
     );
   }
@@ -51,13 +55,15 @@ export function SongRow({ song, index, onRemove, onEdit, dragHandleProps }: Song
     <div>
       <div className="flex items-center gap-2 px-2 py-3 bg-card border border-border rounded-lg group">
         {/* Drag handle */}
-        <button
-          className="p-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
-          aria-label="Drag to reorder"
-          {...dragHandleProps}
-        >
-          <GripVertical className="w-4 h-4" />
-        </button>
+        {dragHandleProps && (
+          <button
+            className="p-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing touch-none"
+            aria-label="Drag to reorder"
+            {...dragHandleProps}
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+        )}
 
         {/* Position number */}
         <span className="w-6 text-center text-xs text-muted-foreground font-mono">
@@ -97,13 +103,15 @@ export function SongRow({ song, index, onRemove, onEdit, dragHandleProps }: Song
         </div>
 
         {/* Remove button */}
-        <button
-          onClick={() => onRemove(song.id)}
-          className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-          aria-label={`Remove ${song.title}`}
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {onRemove && (
+          <button
+            onClick={() => onRemove(song.id)}
+            className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+            aria-label={`Remove ${song.title}`}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Transition notes */}

@@ -72,7 +72,7 @@ export default async function SetlistPage({ params }: SetlistPageProps) {
         </div>
       </div>
 
-      <SetlistEditor setlist={setlist} initialSongs={songs} defaultBreakDurationMs={defaultBreakDurationMs} />
+      <SetlistEditor setlist={setlist} initialSongs={songs} defaultBreakDurationMs={defaultBreakDurationMs} isArchived={setlist.is_archived ?? false} />
     </div>
   );
 }

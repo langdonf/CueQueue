@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, MoreVertical, Copy, ChevronDown, ChevronRight, Pause, Archive, Loader2 } from "lucide-react";
+import { Plus, Trash2, MoreVertical, Copy, ChevronDown, ChevronRight, Pause, Archive, ArchiveRestore, Loader2 } from "lucide-react";
 import { updateSetlist, deleteSetlist, duplicateSetlist, archiveSetlist } from "@/actions/setlist-actions";
 import {
   addSongToSetlist,
@@ -48,6 +48,7 @@ interface SetlistEditorProps {
   /** Share token — passed to SpotifySearch so unauthenticated editors can search */
   shareToken?: string;
   defaultBreakDurationMs?: number;
+  isArchived?: boolean;
   onAddSong?: AddSongFn;
   onRemoveSong?: RemoveSongFn;
   onReorderSongs?: ReorderSongsFn;
@@ -59,6 +60,7 @@ export function SetlistEditor({
   mode = "owner",
   shareToken,
   defaultBreakDurationMs = 900000,
+  isArchived = false,
   onAddSong,
   onRemoveSong,
   onReorderSongs,
@@ -93,6 +95,7 @@ export function SetlistEditor({
   const { markPending } = useRealtimeSetlist(setlist.id, songs, setSongs);
 
   const isOwner = mode === "owner";
+  const isEditable = isOwner && !isArchived;
 
   // Resolve action functions — use overrides if provided, otherwise defaults
   const effectiveAddSong: AddSongFn =
@@ -240,13 +243,13 @@ export function SetlistEditor({
 
   async function handleArchive() {
     setMenuLoading("archive");
-    const result = await archiveSetlist(setlist.id);
+    const result = await archiveSetlist(setlist.id, !isArchived);
     if ("error" in result) {
       toast.error(result.error);
       setMenuLoading(null);
       return;
     }
-    toast.success("Setlist archived");
+    toast.success(isArchived ? "Setlist unarchived" : "Setlist archived");
     router.push("/setlists");
   }
 
@@ -266,7 +269,7 @@ export function SetlistEditor({
     <div>
       {/* Header */}
       <div className="mb-6">
-        {isOwner && editingName ? (
+        {isEditable && editingName ? (
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -277,7 +280,7 @@ export function SetlistEditor({
           />
         ) : (
           <div className="flex items-start justify-between">
-            {isOwner ? (
+            {isEditable ? (
               <button
                 onClick={() => setEditingName(true)}
                 className="text-2xl font-bold text-left hover:text-primary transition-colors"
@@ -297,18 +300,20 @@ export function SetlistEditor({
                 </button>
                 {showMenu && (
                   <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg py-1 min-w-[160px] z-10">
-                    <button
-                      onClick={handleDuplicate}
-                      disabled={!!menuLoading}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors disabled:opacity-50"
-                    >
-                      {menuLoading === "duplicate" ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                      {menuLoading === "duplicate" ? "Duplicating..." : "Duplicate"}
-                    </button>
+                    {!isArchived && (
+                      <button
+                        onClick={handleDuplicate}
+                        disabled={!!menuLoading}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors disabled:opacity-50"
+                      >
+                        {menuLoading === "duplicate" ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                        {menuLoading === "duplicate" ? "Duplicating..." : "Duplicate"}
+                      </button>
+                    )}
                     <button
                       onClick={handleArchive}
                       disabled={!!menuLoading}
@@ -316,10 +321,14 @@ export function SetlistEditor({
                     >
                       {menuLoading === "archive" ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : isArchived ? (
+                        <ArchiveRestore className="w-4 h-4" />
                       ) : (
                         <Archive className="w-4 h-4" />
                       )}
-                      {menuLoading === "archive" ? "Archiving..." : "Archive"}
+                      {menuLoading === "archive"
+                        ? (isArchived ? "Unarchiving..." : "Archiving...")
+                        : (isArchived ? "Unarchive" : "Archive")}
                     </button>
                     <button
                       onClick={handleDelete}
@@ -341,7 +350,7 @@ export function SetlistEditor({
         )}
 
         {/* Editable venue & date */}
-        {isOwner ? (
+        {isEditable ? (
           <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
             {editingVenue ? (
               <input
@@ -395,7 +404,7 @@ export function SetlistEditor({
         )}
 
         {/* Collapsible notes */}
-        {isOwner && (
+        {isEditable && (
           <div className="mt-3">
             <button
               onClick={() => setNotesExpanded(!notesExpanded)}
@@ -419,6 +428,13 @@ export function SetlistEditor({
             )}
           </div>
         )}
+
+        {/* Read-only notes for archived setlists */}
+        {isArchived && notes && (
+          <div className="mt-3 px-3 py-2 bg-muted/30 border border-border rounded-lg text-sm text-muted-foreground whitespace-pre-wrap">
+            {notes}
+          </div>
+        )}
       </div>
 
       {/* Presence indicators */}
@@ -427,48 +443,59 @@ export function SetlistEditor({
       {/* Duration bar */}
       <SetlistDuration songs={songs} />
 
+      {/* Archived banner */}
+      {isArchived && (
+        <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-muted/50 border border-border rounded-lg text-sm text-muted-foreground">
+          <Archive className="w-4 h-4 shrink-0" />
+          This setlist is archived. Unarchive it to make changes.
+        </div>
+      )}
+
       {/* Song list */}
       <SortableSongList
         songs={songs}
         setSongs={setSongs}
         setlistId={setlist.id}
-        onRemoveSong={handleRemoveSong}
-        onEditSong={(song) => setEditingSong(song)}
+        onRemoveSong={isArchived ? () => {} : handleRemoveSong}
+        onEditSong={isArchived ? undefined : (song) => setEditingSong(song)}
         reorderSongs={effectiveReorderSongs}
         onReorderStarted={() => markPending("reorder")}
+        readOnly={isArchived}
       />
 
       {/* Add song buttons */}
-      <div className="mt-4 flex gap-2">
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Song
-        </button>
-        <button
-          onClick={() => setShowSpotify(true)}
-          className="flex-1 flex items-center justify-center gap-2 py-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
-          </svg>
-          Spotify
-        </button>
-        <button
-          onClick={handleAddBreak}
-          disabled={addingBreak}
-          className="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors disabled:opacity-50"
-          title="Add set break"
-        >
-          {addingBreak ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Pause className="w-4 h-4" />
-          )}
-        </button>
-      </div>
+      {!isArchived && (
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex-1 flex items-center justify-center gap-2 py-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Song
+          </button>
+          <button
+            onClick={() => setShowSpotify(true)}
+            className="flex-1 flex items-center justify-center gap-2 py-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+            </svg>
+            Spotify
+          </button>
+          <button
+            onClick={handleAddBreak}
+            disabled={addingBreak}
+            className="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors disabled:opacity-50"
+            title="Add set break"
+          >
+            {addingBreak ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Pause className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Modals */}
       {showAddModal && (
