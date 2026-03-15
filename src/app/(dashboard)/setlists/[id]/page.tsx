@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Radio, Share2 } from "lucide-react";
+import { ArrowLeft, Radio, Share2, FileDown } from "lucide-react";
 import { getSetlist } from "@/actions/setlist-actions";
 import { SetlistEditor } from "@/components/setlist/SetlistEditor";
 
@@ -38,6 +38,13 @@ export default async function SetlistPage({ params }: SetlistPageProps) {
         </Link>
 
         <div className="flex items-center gap-2">
+          <Link
+            href={`/setlists/${id}/export`}
+            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Export setlist"
+          >
+            <FileDown className="w-5 h-5" />
+          </Link>
           <Link
             href={`/setlists/${id}/share`}
             className="p-2 text-muted-foreground hover:text-foreground transition-colors"
