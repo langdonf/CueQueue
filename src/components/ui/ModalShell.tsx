@@ -15,7 +15,7 @@ export function ModalShell({ title, onClose, children }: ModalShellProps) {
         className="absolute inset-0 bg-black/60"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-md bg-card border border-border rounded-t-2xl sm:rounded-2xl p-6 max-h-[85dvh] overflow-y-auto">
+      <div className="relative w-full max-w-md bg-card border border-border rounded-t-2xl sm:rounded-2xl p-6 mb-16 sm:mb-0 max-h-[75dvh] sm:max-h-[85dvh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">{title}</h2>
           <button

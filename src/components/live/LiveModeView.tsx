@@ -5,22 +5,14 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { formatDurationShort } from "@/lib/utils";
 import { BREAK_SENTINEL } from "@/lib/constants";
+import { useRealtimeSetlist } from "@/hooks/useRealtimeSetlist";
 
-interface LiveSong {
-  id: string;
-  title: string;
-  artist: string | null;
-  duration_ms: number | null;
-  bpm: number | null;
-  key: string | null;
-  notes: string | null;
-  transitionNotes?: string | null;
-}
+import type { SongItem } from "@/lib/types";
 
 interface LiveModeViewProps {
   setlistName: string;
   setlistId: string;
-  songs: LiveSong[];
+  songs: SongItem[];
   setlistNotes?: string | null;
 }
 
@@ -29,11 +21,23 @@ const SWIPE_THRESHOLD = 50;
 export function LiveModeView({
   setlistName,
   setlistId,
-  songs,
+  songs: initialSongs,
   setlistNotes,
 }: LiveModeViewProps) {
   const router = useRouter();
+  const [songs, setSongs] = useState<SongItem[]>(initialSongs);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Real-time sync (read-only — no self-echo suppression needed)
+  useRealtimeSetlist(setlistId, songs, setSongs);
+
+  // Clamp currentIndex if songs are removed
+  useEffect(() => {
+    if (songs.length === 0) return;
+    if (currentIndex >= songs.length) {
+      setCurrentIndex(songs.length - 1);
+    }
+  }, [songs.length, currentIndex]);
 
   const touchStartY = useRef<number | null>(null);
   const touchStartX = useRef<number | null>(null);
@@ -42,6 +46,37 @@ export function LiveModeView({
   const isFirst = currentIndex === 0;
   const isLast = currentIndex === songs.length - 1;
   const isBreak = currentSong?.title === BREAK_SENTINEL;
+
+  // Break countdown timer
+  const [breakRemaining, setBreakRemaining] = useState<number | null>(null);
+  const breakTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    // Clear any existing timer
+    if (breakTimerRef.current) {
+      clearInterval(breakTimerRef.current);
+      breakTimerRef.current = null;
+    }
+
+    if (isBreak && currentSong?.duration_ms) {
+      setBreakRemaining(currentSong.duration_ms);
+      breakTimerRef.current = setInterval(() => {
+        setBreakRemaining((prev) => {
+          if (prev === null || prev <= 1000) {
+            if (breakTimerRef.current) clearInterval(breakTimerRef.current);
+            return 0;
+          }
+          return prev - 1000;
+        });
+      }, 1000);
+    } else {
+      setBreakRemaining(null);
+    }
+
+    return () => {
+      if (breakTimerRef.current) clearInterval(breakTimerRef.current);
+    };
+  }, [isBreak, currentIndex, currentSong?.duration_ms]);
 
   // All songs after the first — always rendered, played ones collapse via grid
   const allUpcoming = songs.slice(1);
@@ -186,11 +221,15 @@ export function LiveModeView({
                 </h1>
                 <div className="w-16 h-px bg-white/20" />
               </div>
-              {currentSong.duration_ms && (
+              {breakRemaining !== null ? (
+                <p className={`text-4xl font-mono ${breakRemaining === 0 ? "text-primary animate-pulse" : "text-white/70"}`}>
+                  {formatDurationShort(breakRemaining)}
+                </p>
+              ) : currentSong.duration_ms ? (
                 <p className="text-xl font-mono text-white/50">
                   {formatDurationShort(currentSong.duration_ms)}
                 </p>
-              )}
+              ) : null}
             </div>
           ) : (
             /* Song card */
@@ -279,7 +318,7 @@ export function LiveModeView({
                       style={{ minHeight: 0 }}
                     >
                       <div
-                        className="flex items-center gap-4 w-full px-6"
+                        className="flex items-center gap-3 w-full px-6"
                         style={{
                           opacity,
                           transform: `scale(${scale})`,
@@ -291,20 +330,17 @@ export function LiveModeView({
                       >
                         {isSongBreak ? (
                           /* Break in upcoming list */
-                          <>
-                            <span className="w-10 shrink-0" />
-                            <div className="flex-1 flex items-center gap-2">
-                              <div className="flex-1 h-px bg-white/20" />
-                              <span className="text-xs uppercase tracking-wider text-white/40 font-medium">
-                                Break
-                              </span>
-                              <div className="flex-1 h-px bg-white/20" />
-                            </div>
-                          </>
+                          <div className="flex-1 flex items-center gap-2">
+                            <div className="flex-1 h-px bg-white/40" />
+                            <span className="text-base uppercase tracking-wider text-white/80 font-semibold">
+                              Break
+                            </span>
+                            <div className="flex-1 h-px bg-white/40" />
+                          </div>
                         ) : (
                           /* Song in upcoming list */
                           <>
-                            <span className="text-2xl font-bold font-mono w-10 text-right shrink-0">
+                            <span className="text-2xl font-bold font-mono shrink-0">
                               {num}
                             </span>
 
@@ -319,11 +355,9 @@ export function LiveModeView({
                               )}
                             </div>
 
-                            {song.duration_ms && (
-                              <span className="text-sm font-mono shrink-0">
-                                {formatDurationShort(song.duration_ms)}
-                              </span>
-                            )}
+                            <span className="text-sm font-mono shrink-0">
+                              {song.duration_ms ? formatDurationShort(song.duration_ms) : ""}
+                            </span>
                           </>
                         )}
                       </div>

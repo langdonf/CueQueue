@@ -4,6 +4,7 @@ import { ArrowLeft, Radio, Share2, FileDown } from "lucide-react";
 import { getSetlist } from "@/actions/setlist-actions";
 import { SetlistEditor } from "@/components/setlist/SetlistEditor";
 import { mapSetlistSongs } from "@/lib/types";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 interface SetlistPageProps {
   params: Promise<{ id: string }>;
@@ -19,6 +20,20 @@ export default async function SetlistPage({ params }: SetlistPageProps) {
 
   const setlist = result.data;
   const songs = mapSetlistSongs(setlist.setlist_songs ?? []);
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let defaultBreakDurationMs = 900000;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("default_break_duration_ms")
+      .eq("id", user.id)
+      .single();
+    if (profile?.default_break_duration_ms) {
+      defaultBreakDurationMs = profile.default_break_duration_ms;
+    }
+  }
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-2xl mx-auto">
@@ -57,7 +72,7 @@ export default async function SetlistPage({ params }: SetlistPageProps) {
         </div>
       </div>
 
-      <SetlistEditor setlist={setlist} initialSongs={songs} />
+      <SetlistEditor setlist={setlist} initialSongs={songs} defaultBreakDurationMs={defaultBreakDurationMs} />
     </div>
   );
 }

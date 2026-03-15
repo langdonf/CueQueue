@@ -5,6 +5,7 @@ import {
   ManageSubscriptionButton,
 } from "@/components/subscription/SubscriptionButtons";
 import { UpgradeSuccessToast } from "./upgrade-toast";
+import { SettingsClient } from "./settings-client";
 
 interface SettingsPageProps {
   searchParams: Promise<{ upgraded?: string }>;
@@ -21,11 +22,34 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, subscription_tier")
+    .select("display_name, subscription_tier, default_break_duration_ms")
     .eq("id", user.id)
     .single();
 
   const isPro = profile?.subscription_tier === "pro";
+
+  const subscriptionSlot = isPro ? (
+    <div>
+      <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+        Subscription
+      </h2>
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">SetList Pro — $5/year</span>
+        <ManageSubscriptionButton />
+      </div>
+    </div>
+  ) : (
+    <div>
+      <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+        Subscription
+      </h2>
+      <div className="flex items-center justify-between text-sm mb-3">
+        <span className="text-muted-foreground">Plan</span>
+        <span>Free</span>
+      </div>
+      <UpgradeButton />
+    </div>
+  );
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-lg mx-auto">
@@ -33,56 +57,14 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
 
-      <div className="space-y-6">
-        {/* Account */}
-        <div className="p-4 bg-card border border-border rounded-xl">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
-            Account
-          </h2>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Email</span>
-              <span>{user.email}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Plan</span>
-              {isPro ? (
-                <span className="px-2 py-0.5 text-xs font-medium bg-primary/20 text-primary rounded">
-                  PRO
-                </span>
-              ) : (
-                <span className="capitalize">Free</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Subscription - Free users */}
-        {!isPro && (
-          <div className="p-4 bg-card border border-primary/30 rounded-xl">
-            <h2 className="text-sm font-medium text-primary uppercase tracking-wide mb-2">
-              Upgrade to Pro
-            </h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Unlimited setlists, Live Mode, Sharing, and more.
-            </p>
-            <UpgradeButton />
-          </div>
-        )}
-
-        {/* Subscription - Pro users */}
-        {isPro && (
-          <div className="p-4 bg-card border border-border rounded-xl">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
-              Subscription
-            </h2>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">SetList Pro — $5/year</span>
-              <ManageSubscriptionButton />
-            </div>
-          </div>
-        )}
-      </div>
+      <SettingsClient
+        email={user.email ?? ""}
+        displayName={profile?.display_name ?? null}
+        defaultBreakDurationMs={profile?.default_break_duration_ms ?? 900000}
+        isPro={isPro}
+        version="0.1.0"
+        subscriptionSlot={subscriptionSlot}
+      />
     </div>
   );
 }

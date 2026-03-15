@@ -5,6 +5,7 @@ import { Search, Library } from "lucide-react";
 import { getLibrarySongs } from "@/actions/song-actions";
 import { formatDurationShort, splitDurationMs, parseDurationInputs } from "@/lib/utils";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { BREAK_SENTINEL } from "@/lib/constants";
 
 interface LibrarySong {
   id: string;
@@ -79,6 +80,7 @@ export function AddSongModal({ onAdd, onClose }: AddSongModalProps) {
   }
 
   const filteredLibrary = librarySongs.filter((song) => {
+    if (song.title === BREAK_SENTINEL) return false;
     if (!libraryFilter) return true;
     const q = libraryFilter.toLowerCase();
     return (

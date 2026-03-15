@@ -33,6 +33,7 @@ interface SortableSongListProps {
     setlistId: string,
     orderedSongIds: string[]
   ) => Promise<{ error?: string; success?: boolean }>;
+  onReorderStarted?: () => void;
 }
 
 function SortableSongRow({
@@ -82,6 +83,7 @@ export function SortableSongList({
   onRemoveSong,
   onEditSong,
   reorderSongs,
+  onReorderStarted,
 }: SortableSongListProps) {
   const dndId = useId();
   const sensors = useSensors(
@@ -103,6 +105,7 @@ export function SortableSongList({
 
       const reordered = arrayMove(songs, oldIndex, newIndex);
       setSongs(reordered);
+      onReorderStarted?.();
 
       const orderedIds = reordered.map((s) => s.id);
       const result = await reorderSongs(setlistId, orderedIds);
@@ -111,7 +114,7 @@ export function SortableSongList({
         setSongs(songs); // revert
       }
     },
-    [songs, setSongs, setlistId]
+    [songs, setSongs, setlistId, reorderSongs, onReorderStarted]
   );
 
   if (songs.length === 0) {

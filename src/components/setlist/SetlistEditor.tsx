@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, MoreVertical, Copy, ChevronDown, ChevronRight, Pause, Archive } from "lucide-react";
+import { Plus, Trash2, MoreVertical, Copy, ChevronDown, ChevronRight, Pause, Archive, Loader2 } from "lucide-react";
 import { updateSetlist, deleteSetlist, duplicateSetlist, archiveSetlist } from "@/actions/setlist-actions";
 import {
   addSongToSetlist,
@@ -16,6 +16,8 @@ import { AddSongModal } from "./AddSongModal";
 import { EditSongModal } from "./EditSongModal";
 import { SetlistDuration } from "./SetlistDuration";
 import { SpotifySearch } from "@/components/spotify/SpotifySearch";
+import { useRealtimeSetlist } from "@/hooks/useRealtimeSetlist";
+import { PresenceBar } from "./PresenceBar";
 import { toast } from "sonner";
 import { formatGigDate } from "@/lib/utils";
 import { BREAK_SENTINEL } from "@/lib/constants";
@@ -45,6 +47,7 @@ interface SetlistEditorProps {
   mode?: "owner" | "shared";
   /** Share token — passed to SpotifySearch so unauthenticated editors can search */
   shareToken?: string;
+  defaultBreakDurationMs?: number;
   onAddSong?: AddSongFn;
   onRemoveSong?: RemoveSongFn;
   onReorderSongs?: ReorderSongsFn;
@@ -55,6 +58,7 @@ export function SetlistEditor({
   initialSongs,
   mode = "owner",
   shareToken,
+  defaultBreakDurationMs = 900000,
   onAddSong,
   onRemoveSong,
   onReorderSongs,
@@ -80,6 +84,13 @@ export function SetlistEditor({
 
   // Edit song modal
   const [editingSong, setEditingSong] = useState<SongItem | null>(null);
+
+  // Loading states for menu actions
+  const [menuLoading, setMenuLoading] = useState<string | null>(null);
+  const [addingBreak, setAddingBreak] = useState(false);
+
+  // Real-time sync
+  const { markPending } = useRealtimeSetlist(setlist.id, songs, setSongs);
 
   const isOwner = mode === "owner";
 
@@ -150,12 +161,15 @@ export function SetlistEditor({
       toast.error(result.error);
       return;
     }
+    markPending(`add:${result.data.song.id}`);
     setSongs((prev) => [...prev, result.data.song]);
     setShowAddModal(false);
     setShowSpotify(false);
   }
 
   async function handleRemoveSong(songId: string) {
+    const songToRemove = songs.find((s) => s.id === songId);
+    if (songToRemove) markPending(`remove:${songToRemove.setlistSongId}`);
     setSongs((prev) => prev.filter((s) => s.id !== songId));
     const result = await effectiveRemoveSong(setlist.id, songId);
     if ("error" in result) {
@@ -172,6 +186,7 @@ export function SetlistEditor({
     key?: string | null;
     notes?: string | null;
   }) {
+    markPending(`edit:${songId}`);
     // Optimistic update
     setSongs((prev) =>
       prev.map((s) => (s.id === songId ? { ...s, ...input } : s))
@@ -184,6 +199,7 @@ export function SetlistEditor({
   }
 
   async function handleUpdateTransitionNotes(setlistSongId: string, songId: string, transNotes: string | null) {
+    markPending(`transition:${setlistSongId}`);
     setSongs((prev) =>
       prev.map((s) => (s.setlistSongId === setlistSongId ? { ...s, transitionNotes: transNotes } : s))
     );
@@ -195,22 +211,27 @@ export function SetlistEditor({
   }
 
   async function handleAddBreak() {
+    setAddingBreak(true);
     const result = await effectiveAddSong(setlist.id, {
       title: BREAK_SENTINEL,
-      duration_ms: 15 * 60 * 1000, // 15 min default
+      duration_ms: defaultBreakDurationMs,
     });
+    setAddingBreak(false);
     if ("error" in result) {
       toast.error(result.error);
       return;
     }
+    markPending(`add:${result.data.song.id}`);
     setSongs((prev) => [...prev, result.data.song]);
   }
 
   async function handleDelete() {
     if (!confirm("Delete this setlist? This cannot be undone.")) return;
+    setMenuLoading("delete");
     const result = await deleteSetlist(setlist.id);
     if ("error" in result) {
       toast.error(result.error);
+      setMenuLoading(null);
       return;
     }
     toast.success("Setlist deleted");
@@ -218,9 +239,11 @@ export function SetlistEditor({
   }
 
   async function handleArchive() {
+    setMenuLoading("archive");
     const result = await archiveSetlist(setlist.id);
     if ("error" in result) {
       toast.error(result.error);
+      setMenuLoading(null);
       return;
     }
     toast.success("Setlist archived");
@@ -228,9 +251,11 @@ export function SetlistEditor({
   }
 
   async function handleDuplicate() {
+    setMenuLoading("duplicate");
     const result = await duplicateSetlist(setlist.id);
     if ("error" in result) {
       toast.error(result.error);
+      setMenuLoading(null);
       return;
     }
     toast.success("Setlist duplicated");
@@ -273,34 +298,40 @@ export function SetlistEditor({
                 {showMenu && (
                   <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg py-1 min-w-[160px] z-10">
                     <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        handleDuplicate();
-                      }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors"
+                      onClick={handleDuplicate}
+                      disabled={!!menuLoading}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors disabled:opacity-50"
                     >
-                      <Copy className="w-4 h-4" />
-                      Duplicate
+                      {menuLoading === "duplicate" ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                      {menuLoading === "duplicate" ? "Duplicating..." : "Duplicate"}
                     </button>
                     <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        handleArchive();
-                      }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors"
+                      onClick={handleArchive}
+                      disabled={!!menuLoading}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors disabled:opacity-50"
                     >
-                      <Archive className="w-4 h-4" />
-                      Archive
+                      {menuLoading === "archive" ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Archive className="w-4 h-4" />
+                      )}
+                      {menuLoading === "archive" ? "Archiving..." : "Archive"}
                     </button>
                     <button
-                      onClick={() => {
-                        setShowMenu(false);
-                        handleDelete();
-                      }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors"
+                      onClick={handleDelete}
+                      disabled={!!menuLoading}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors disabled:opacity-50"
                     >
-                      <Trash2 className="w-4 h-4" />
-                      Delete
+                      {menuLoading === "delete" ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                      {menuLoading === "delete" ? "Deleting..." : "Delete"}
                     </button>
                   </div>
                 )}
@@ -390,6 +421,9 @@ export function SetlistEditor({
         )}
       </div>
 
+      {/* Presence indicators */}
+      <PresenceBar setlistId={setlist.id} mode={isOwner ? "editing" : "editing"} />
+
       {/* Duration bar */}
       <SetlistDuration songs={songs} />
 
@@ -401,6 +435,7 @@ export function SetlistEditor({
         onRemoveSong={handleRemoveSong}
         onEditSong={(song) => setEditingSong(song)}
         reorderSongs={effectiveReorderSongs}
+        onReorderStarted={() => markPending("reorder")}
       />
 
       {/* Add song buttons */}
@@ -423,10 +458,15 @@ export function SetlistEditor({
         </button>
         <button
           onClick={handleAddBreak}
-          className="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+          disabled={addingBreak}
+          className="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors disabled:opacity-50"
           title="Add set break"
         >
-          <Pause className="w-4 h-4" />
+          {addingBreak ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Pause className="w-4 h-4" />
+          )}
         </button>
       </div>
 

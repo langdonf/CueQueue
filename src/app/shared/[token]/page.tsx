@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Music, MapPin, Calendar, Clock } from "lucide-react";
 import { getSharedSetlist } from "@/actions/share-actions";
-import { formatDuration, formatDurationShort, formatGigDate } from "@/lib/utils";
+import { formatDuration, formatGigDate } from "@/lib/utils";
 import { SharedSetlistEditor } from "@/components/setlist/SharedSetlistEditor";
+import { SharedViewList } from "@/components/setlist/SharedViewList";
 import { mapSetlistSongs } from "@/lib/types";
 import type { SongItem, SetlistSongRow } from "@/lib/types";
 
@@ -103,44 +104,8 @@ export default async function SharedSetlistPage({ params }: SharedPageProps) {
         </span>
       </div>
 
-      {/* Song list */}
-      <div className="mt-6 flex flex-col gap-2">
-        {songs.map((song: SongItem, index: number) => (
-          <div
-            key={song.id}
-            className="flex items-center gap-3 px-3 py-3 bg-card border border-border rounded-lg"
-          >
-            <span className="w-6 text-center text-xs text-muted-foreground font-mono">
-              {index + 1}
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm truncate">{song.title}</div>
-              {song.artist && (
-                <div className="text-xs text-muted-foreground truncate">
-                  {song.artist}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {song.key && (
-                <span className="px-1.5 py-0.5 text-[10px] font-mono bg-muted rounded text-muted-foreground">
-                  {song.key}
-                </span>
-              )}
-              {song.bpm && (
-                <span className="px-1.5 py-0.5 text-[10px] font-mono bg-muted rounded text-muted-foreground">
-                  {song.bpm}
-                </span>
-              )}
-              {song.duration_ms && (
-                <span className="text-xs text-muted-foreground font-mono">
-                  {formatDurationShort(song.duration_ms)}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Song list — real-time via client component */}
+      <SharedViewList setlistId={setlist.id} initialSongs={songs} />
 
       {/* Footer */}
       <div className="mt-8 text-center">
