@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Check, Loader2, LogOut, Trash2, ExternalLink } from "lucide-react";
-import { updateDisplayName, updateDefaultBreakDuration, deleteAccount } from "@/actions/profile-actions";
+import { updateDisplayName, updateDefaultBreakDuration, updateDefaultNotesExpanded, deleteAccount } from "@/actions/profile-actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
@@ -11,6 +11,7 @@ interface SettingsClientProps {
   email: string;
   displayName: string | null;
   defaultBreakDurationMs: number;
+  defaultNotesExpanded: boolean;
   version: string;
   subscriptionSlot: React.ReactNode;
 }
@@ -23,13 +24,15 @@ const BREAK_OPTIONS = [
   { label: "30 min", value: 30 * 60 * 1000 },
 ];
 
-export function SettingsClient({ email, displayName, defaultBreakDurationMs, version, subscriptionSlot }: SettingsClientProps) {
+export function SettingsClient({ email, displayName, defaultBreakDurationMs, defaultNotesExpanded, version, subscriptionSlot }: SettingsClientProps) {
   const router = useRouter();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(displayName ?? "");
   const [savingName, setSavingName] = useState(false);
   const [breakDuration, setBreakDuration] = useState(defaultBreakDurationMs);
   const [savingBreak, setSavingBreak] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(defaultNotesExpanded);
+  const [savingNotes, setSavingNotes] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -56,6 +59,19 @@ export function SettingsClient({ email, displayName, defaultBreakDurationMs, ver
       return;
     }
     toast.success("Default break duration updated");
+  }
+
+  async function handleNotesExpandedChange(expanded: boolean) {
+    setNotesExpanded(expanded);
+    setSavingNotes(true);
+    const result = await updateDefaultNotesExpanded(expanded);
+    setSavingNotes(false);
+    if ("error" in result) {
+      toast.error(result.error);
+      setNotesExpanded(defaultNotesExpanded);
+      return;
+    }
+    toast.success("Song notes preference updated");
   }
 
   async function handleSignOut() {
@@ -168,6 +184,25 @@ export function SettingsClient({ email, displayName, defaultBreakDurationMs, ver
             ))}
           </select>
           {savingBreak && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+        </div>
+      </div>
+      <div className="flex justify-between items-center text-sm mt-3">
+        <span className="text-muted-foreground">Song notes expanded by default</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleNotesExpandedChange(!notesExpanded)}
+            disabled={savingNotes}
+            className={`relative w-10 h-5.5 rounded-full transition-colors disabled:opacity-50 ${
+              notesExpanded ? "bg-primary" : "bg-muted-foreground/30"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-white rounded-full transition-transform ${
+                notesExpanded ? "translate-x-[18px]" : "translate-x-0"
+              }`}
+            />
+          </button>
+          {savingNotes && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
         </div>
       </div>
 

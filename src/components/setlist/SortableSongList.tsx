@@ -35,6 +35,8 @@ interface SortableSongListProps {
   ) => Promise<{ error?: string; success?: boolean }>;
   onReorderStarted?: () => void;
   readOnly?: boolean;
+  notesExpanded?: boolean;
+  onSaveNotes?: (songId: string, notes: string | null) => void;
 }
 
 const SortableSongRow = memo(function SortableSongRow({
@@ -43,12 +45,16 @@ const SortableSongRow = memo(function SortableSongRow({
   onRemove,
   onEdit,
   readOnly,
+  notesExpanded,
+  onSaveNotes,
 }: {
   song: SongItem;
   index: number;
   onRemove: (songId: string) => void;
   onEdit?: (song: SongItem) => void;
   readOnly?: boolean;
+  notesExpanded?: boolean;
+  onSaveNotes?: (songId: string, notes: string | null) => void;
 }) {
   const {
     attributes,
@@ -74,6 +80,9 @@ const SortableSongRow = memo(function SortableSongRow({
         onRemove={readOnly ? undefined : onRemove}
         onEdit={onEdit}
         dragHandleProps={readOnly ? undefined : listeners}
+        notesExpanded={notesExpanded}
+        onSaveNotes={onSaveNotes}
+        readOnly={readOnly}
       />
     </div>
   );
@@ -88,6 +97,8 @@ export function SortableSongList({
   reorderSongs,
   onReorderStarted,
   readOnly = false,
+  notesExpanded,
+  onSaveNotes,
 }: SortableSongListProps) {
   const dndId = useId();
   const sensors = useSensors(
@@ -153,6 +164,8 @@ export function SortableSongList({
               onRemove={onRemoveSong}
               onEdit={onEditSong}
               readOnly={readOnly}
+              notesExpanded={notesExpanded}
+              onSaveNotes={onSaveNotes}
             />
           ))}
         </div>

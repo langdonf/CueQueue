@@ -50,6 +50,25 @@ export async function updateDefaultBreakDuration(durationMs: number) {
   }
 }
 
+export async function updateDefaultNotesExpanded(expanded: boolean) {
+  try {
+    return await withAuth(async (supabase, user) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ default_notes_expanded: expanded })
+        .eq("id", user.id);
+
+      if (error) return { error: error.message };
+
+      revalidatePath("/setlists", "layout");
+      return { data: { expanded } };
+    });
+  } catch (e) {
+    console.error("updateDefaultNotesExpanded error:", e);
+    return { error: "Failed to update notes preference" };
+  }
+}
+
 export async function deleteAccount() {
   return withAuth(async (_supabase, user) => {
     const admin = createSupabaseAdminClient();

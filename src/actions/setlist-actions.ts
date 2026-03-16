@@ -196,7 +196,7 @@ export async function getSetlist(id: string) {
         .single(),
       supabase
         .from("profiles")
-        .select("default_break_duration_ms, display_name")
+        .select("default_break_duration_ms, display_name, default_notes_expanded")
         .eq("id", user.id)
         .single(),
     ]);
@@ -216,6 +216,7 @@ export async function getSetlist(id: string) {
       data: {
         ...data,
         defaultBreakDurationMs: profileResult.data?.default_break_duration_ms ?? 900000,
+        defaultNotesExpanded: profileResult.data?.default_notes_expanded ?? true,
         displayName: profileResult.data?.display_name || user.email?.split("@")[0] || "User",
       },
     };

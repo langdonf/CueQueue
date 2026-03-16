@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, MoreVertical, Copy, ChevronDown, ChevronRight, Archive, ArchiveRestore, Loader2 } from "lucide-react";
+import { Plus, Trash2, MoreVertical, Copy, ChevronDown, ChevronRight, Archive, ArchiveRestore, Loader2, StickyNote, ChevronUp } from "lucide-react";
 import { updateSetlist, deleteSetlist, duplicateSetlist, archiveSetlist } from "@/actions/setlist-actions";
 import {
   addSongToSetlist,
@@ -51,6 +51,7 @@ interface SetlistEditorProps {
   /** Share token — passed to SpotifySearch so unauthenticated editors can search */
   shareToken?: string;
   defaultBreakDurationMs?: number;
+  defaultNotesExpanded?: boolean;
   isArchived?: boolean;
   displayName?: string;
   onAddSong?: AddSongFn;
@@ -64,6 +65,7 @@ export function SetlistEditor({
   mode = "owner",
   shareToken,
   defaultBreakDurationMs = 900000,
+  defaultNotesExpanded = true,
   isArchived = false,
   displayName,
   onAddSong,
@@ -89,6 +91,9 @@ export function SetlistEditor({
   const [notes, setNotes] = useState(setlist.notes ?? "");
   const notesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Song notes
+  const [songNotesExpanded, setSongNotesExpanded] = useState(defaultNotesExpanded);
+
   // Edit song modal
   const [editingSong, setEditingSong] = useState<SongItem | null>(null);
 
@@ -105,6 +110,16 @@ export function SetlistEditor({
   // Stable callbacks for memoized children
   const handleEditSongOpen = useCallback((song: SongItem) => setEditingSong(song), []);
   const handleReorderStarted = useCallback(() => markPending("reorder"), [markPending]);
+
+  const handleSaveSongNotes = useCallback((songId: string, newNotes: string | null) => {
+    markPending(`edit:${songId}`);
+    setSongs((prev) =>
+      prev.map((s) => (s.id === songId ? { ...s, notes: newNotes } : s))
+    );
+    updateSong(songId, { notes: newNotes }).then((result) => {
+      if ("error" in result) toast.error(result.error);
+    });
+  }, [markPending]);
 
   // Resolve action functions — use overrides if provided, otherwise defaults
   const effectiveAddSong: AddSongFn = useMemo(
@@ -474,6 +489,24 @@ export function SetlistEditor({
         </div>
       )}
 
+      {/* Song notes toggle */}
+      {songs.length > 0 && (
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={() => setSongNotesExpanded(!songNotesExpanded)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <StickyNote className="w-3 h-3" />
+            {songNotesExpanded ? "Hide" : "Show"} notes
+            {songNotesExpanded ? (
+              <ChevronUp className="w-3 h-3" />
+            ) : (
+              <ChevronDown className="w-3 h-3" />
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Song list */}
       <SortableSongList
         songs={songs}
@@ -484,6 +517,8 @@ export function SetlistEditor({
         reorderSongs={effectiveReorderSongs}
         onReorderStarted={handleReorderStarted}
         readOnly={isArchived}
+        notesExpanded={songNotesExpanded}
+        onSaveNotes={isEditable ? handleSaveSongNotes : undefined}
       />
 
       {/* Add song buttons */}

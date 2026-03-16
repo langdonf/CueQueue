@@ -22,6 +22,7 @@ export default async function SetlistPage({ params }: SetlistPageProps) {
   const setlist = result.data;
   const songs = mapSetlistSongs(setlist.setlist_songs ?? []);
   const defaultBreakDurationMs = setlist.defaultBreakDurationMs ?? 900000;
+  const defaultNotesExpanded = setlist.defaultNotesExpanded ?? true;
   const displayName = setlist.displayName ?? "User";
 
   return (
@@ -61,7 +62,7 @@ export default async function SetlistPage({ params }: SetlistPageProps) {
         </div>
       </div>
 
-      <SetlistEditor setlist={setlist} initialSongs={songs} defaultBreakDurationMs={defaultBreakDurationMs} isArchived={setlist.is_archived ?? false} displayName={displayName} />
+      <SetlistEditor setlist={setlist} initialSongs={songs} defaultBreakDurationMs={defaultBreakDurationMs} defaultNotesExpanded={defaultNotesExpanded} isArchived={setlist.is_archived ?? false} displayName={displayName} />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { GripVertical, X, ArrowRight } from "lucide-react";
 import { formatDurationShort } from "@/lib/utils";
 import type { SongItem } from "@/lib/types";
 import { BREAK_SENTINEL } from "@/lib/constants";
+import { InlineSongNotes } from "./InlineSongNotes";
 
 interface SongRowProps {
   song: SongItem;
@@ -10,9 +11,12 @@ interface SongRowProps {
   onRemove?: (songId: string) => void;
   onEdit?: (song: SongItem) => void;
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  notesExpanded?: boolean;
+  onSaveNotes?: (songId: string, notes: string | null) => void;
+  readOnly?: boolean;
 }
 
-export const SongRow = memo(function SongRow({ song, index, onRemove, onEdit, dragHandleProps }: SongRowProps) {
+export const SongRow = memo(function SongRow({ song, index, onRemove, onEdit, dragHandleProps, notesExpanded, onSaveNotes, readOnly }: SongRowProps) {
   const isBreak = song.title === BREAK_SENTINEL;
 
   if (isBreak) {
@@ -114,6 +118,23 @@ export const SongRow = memo(function SongRow({ song, index, onRemove, onEdit, dr
           </button>
         )}
       </div>
+
+      {/* Inline song notes */}
+      {notesExpanded && onSaveNotes && (
+        <InlineSongNotes
+          songId={song.id}
+          initialNotes={song.notes ?? ""}
+          onSave={onSaveNotes}
+          readOnly={readOnly}
+        />
+      )}
+
+      {/* Read-only notes for archived/shared views */}
+      {notesExpanded && !onSaveNotes && song.notes && (
+        <div className="px-4 pb-1 text-xs text-muted-foreground whitespace-pre-wrap">
+          {song.notes}
+        </div>
+      )}
 
       {/* Transition notes */}
       {song.transitionNotes && (
