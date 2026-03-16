@@ -3,8 +3,12 @@ import { createBrowserClient } from "@supabase/ssr";
 // 30 days — matches the middleware cookie settings
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
+let cachedClient: ReturnType<typeof createBrowserClient> | null = null;
+
 export function createSupabaseBrowserClient() {
-  return createBrowserClient(
+  if (cachedClient) return cachedClient;
+
+  cachedClient = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -19,4 +23,6 @@ export function createSupabaseBrowserClient() {
       },
     }
   );
+
+  return cachedClient;
 }

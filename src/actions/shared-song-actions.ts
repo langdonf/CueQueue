@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   sharedAddLimiter,
@@ -62,71 +61,64 @@ export async function sharedAddSongToSetlist(
 
   const admin = createSupabaseAdminClient();
 
-  // Enforce max songs per setlist
-  const { count } = await admin
-    .from("setlist_songs")
-    .select("*", { count: "exact", head: true })
-    .eq("setlist_id", setlistId);
+  // Run count check + song insert in parallel (independent queries)
+  const [countResult, songResult] = await Promise.all([
+    admin
+      .from("setlist_songs")
+      .select("*", { count: "exact", head: true })
+      .eq("setlist_id", setlistId),
+    admin
+      .from("songs")
+      .insert({
+        user_id: validation.userId,
+        title: songInput.title,
+        artist: songInput.artist,
+        duration_ms: songInput.duration_ms,
+        bpm: songInput.bpm,
+        key: songInput.key,
+        spotify_track_id: songInput.spotify_track_id,
+        spotify_uri: songInput.spotify_uri,
+        notes: songInput.notes,
+      })
+      .select("*")
+      .single(),
+  ]);
 
+  if (songResult.error) return { error: songResult.error.message };
+
+  const { count } = countResult;
   if (count !== null && count >= MAX_SONGS_PER_SETLIST) {
+    await admin.from("songs").delete().eq("id", songResult.data.id);
     return { error: `Setlists are limited to ${MAX_SONGS_PER_SETLIST} songs.` };
   }
 
-  // Create the song attributed to the setlist owner
-  const { data: song, error: songError } = await admin
-    .from("songs")
-    .insert({
-      user_id: validation.userId,
-      title: songInput.title,
-      artist: songInput.artist,
-      duration_ms: songInput.duration_ms,
-      bpm: songInput.bpm,
-      key: songInput.key,
-      spotify_track_id: songInput.spotify_track_id,
-      spotify_uri: songInput.spotify_uri,
-      notes: songInput.notes,
-    })
-    .select("*")
-    .single();
+  const song = songResult.data;
+  const nextPosition = count ?? 0;
 
-  if (songError) return { error: songError.message };
+  // Create junction entry + touch timestamp in parallel
+  const [junctionResult] = await Promise.all([
+    admin
+      .from("setlist_songs")
+      .insert({
+        setlist_id: setlistId,
+        song_id: song.id,
+        position: nextPosition,
+      })
+      .select("id")
+      .single(),
+    admin
+      .from("setlists")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", setlistId),
+  ]);
 
-  // Get next position
-  const { data: existing } = await admin
-    .from("setlist_songs")
-    .select("position")
-    .eq("setlist_id", setlistId)
-    .order("position", { ascending: false })
-    .limit(1);
+  if (junctionResult.error) return { error: junctionResult.error.message };
 
-  const nextPosition =
-    existing && existing.length > 0 ? existing[0].position + 1 : 0;
-
-  // Create junction entry
-  const { data: junction, error: junctionError } = await admin
-    .from("setlist_songs")
-    .insert({
-      setlist_id: setlistId,
-      song_id: song.id,
-      position: nextPosition,
-    })
-    .select("id")
-    .single();
-
-  if (junctionError) return { error: junctionError.message };
-
-  // Touch setlist timestamp
-  await admin
-    .from("setlists")
-    .update({ updated_at: new Date().toISOString() })
-    .eq("id", setlistId);
-
-  revalidatePath(`/shared/${token}`);
   return {
     data: {
       song: {
         id: song.id,
-        setlistSongId: junction.id,
+        setlistSongId: junctionResult.data.id,
         position: nextPosition,
         title: song.title,
         artist: song.artist,
@@ -173,7 +165,6 @@ export async function sharedRemoveSongFromSetlist(
     .update({ updated_at: new Date().toISOString() })
     .eq("id", setlistId);
 
-  revalidatePath(`/shared/${token}`);
   return { data: undefined };
 }
 
@@ -201,6 +192,5 @@ export async function sharedReorderSongs(
 
   if (error) return { error: error.message };
 
-  revalidatePath(`/shared/${token}`);
   return { data: undefined };
 }

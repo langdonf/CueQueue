@@ -5,10 +5,11 @@ import { useSetlistPresence } from "@/hooks/useSetlistPresence";
 interface PresenceBarProps {
   setlistId: string;
   mode: "viewing" | "editing";
+  displayName?: string;
 }
 
-export function PresenceBar({ setlistId, mode }: PresenceBarProps) {
-  const others = useSetlistPresence(setlistId, mode);
+export function PresenceBar({ setlistId, mode, displayName }: PresenceBarProps) {
+  const others = useSetlistPresence(setlistId, mode, displayName);
 
   if (others.length === 0) return null;
 

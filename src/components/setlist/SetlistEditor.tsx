@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, MoreVertical, Copy, ChevronDown, ChevronRight, Pause, Archive, ArchiveRestore, Loader2 } from "lucide-react";
 import { updateSetlist, deleteSetlist, duplicateSetlist, archiveSetlist } from "@/actions/setlist-actions";
@@ -24,6 +24,9 @@ import { BREAK_SENTINEL } from "@/lib/constants";
 import type { SongItem, CreateSongInput, ActionResult } from "@/lib/types";
 
 export type { SongItem } from "@/lib/types";
+
+// Stable no-op for archived mode — avoids creating a new function ref on every render
+const noopRemove = () => {};
 
 type AddSongFn = (setlistId: string, songInput: CreateSongInput) => Promise<ActionResult<{ song: SongItem }>>;
 type RemoveSongFn = (
@@ -49,6 +52,7 @@ interface SetlistEditorProps {
   shareToken?: string;
   defaultBreakDurationMs?: number;
   isArchived?: boolean;
+  displayName?: string;
   onAddSong?: AddSongFn;
   onRemoveSong?: RemoveSongFn;
   onReorderSongs?: ReorderSongsFn;
@@ -61,6 +65,7 @@ export function SetlistEditor({
   shareToken,
   defaultBreakDurationMs = 900000,
   isArchived = false,
+  displayName,
   onAddSong,
   onRemoveSong,
   onReorderSongs,
@@ -97,13 +102,23 @@ export function SetlistEditor({
   const isOwner = mode === "owner";
   const isEditable = isOwner && !isArchived;
 
+  // Stable callbacks for memoized children
+  const handleEditSongOpen = useCallback((song: SongItem) => setEditingSong(song), []);
+  const handleReorderStarted = useCallback(() => markPending("reorder"), [markPending]);
+
   // Resolve action functions — use overrides if provided, otherwise defaults
-  const effectiveAddSong: AddSongFn =
-    onAddSong ?? ((setlistId, songInput) => addSongToSetlist(setlistId, songInput));
-  const effectiveRemoveSong: RemoveSongFn =
-    onRemoveSong ?? ((setlistId, songId) => removeSongFromSetlist(setlistId, songId));
-  const effectiveReorderSongs: ReorderSongsFn =
-    onReorderSongs ?? ((setlistId, orderedSongIds) => reorderSongs(setlistId, orderedSongIds));
+  const effectiveAddSong: AddSongFn = useMemo(
+    () => onAddSong ?? ((setlistId, songInput) => addSongToSetlist(setlistId, songInput)),
+    [onAddSong]
+  );
+  const effectiveRemoveSong: RemoveSongFn = useMemo(
+    () => onRemoveSong ?? ((setlistId, songId) => removeSongFromSetlist(setlistId, songId)),
+    [onRemoveSong]
+  );
+  const effectiveReorderSongs: ReorderSongsFn = useMemo(
+    () => onReorderSongs ?? ((setlistId, orderedSongIds) => reorderSongs(setlistId, orderedSongIds)),
+    [onReorderSongs]
+  );
 
   async function handleNameSave() {
     setEditingName(false);
@@ -170,16 +185,18 @@ export function SetlistEditor({
     setShowSpotify(false);
   }
 
-  async function handleRemoveSong(songId: string) {
-    const songToRemove = songs.find((s) => s.id === songId);
-    if (songToRemove) markPending(`remove:${songToRemove.setlistSongId}`);
-    setSongs((prev) => prev.filter((s) => s.id !== songId));
+  const handleRemoveSong = useCallback(async (songId: string) => {
+    setSongs((prev) => {
+      const songToRemove = prev.find((s) => s.id === songId);
+      if (songToRemove) markPending(`remove:${songToRemove.setlistSongId}`);
+      return prev.filter((s) => s.id !== songId);
+    });
     const result = await effectiveRemoveSong(setlist.id, songId);
     if ("error" in result) {
       toast.error(result.error);
       router.refresh();
     }
-  }
+  }, [setlist.id, effectiveRemoveSong, markPending, router]);
 
   async function handleEditSong(songId: string, input: {
     title?: string;
@@ -438,7 +455,7 @@ export function SetlistEditor({
       </div>
 
       {/* Presence indicators */}
-      <PresenceBar setlistId={setlist.id} mode={isOwner ? "editing" : "editing"} />
+      <PresenceBar setlistId={setlist.id} mode={isOwner ? "editing" : "editing"} displayName={displayName} />
 
       {/* Duration bar */}
       <SetlistDuration songs={songs} />
@@ -456,10 +473,10 @@ export function SetlistEditor({
         songs={songs}
         setSongs={setSongs}
         setlistId={setlist.id}
-        onRemoveSong={isArchived ? () => {} : handleRemoveSong}
-        onEditSong={isArchived ? undefined : (song) => setEditingSong(song)}
+        onRemoveSong={isArchived ? noopRemove : handleRemoveSong}
+        onEditSong={isArchived ? undefined : handleEditSongOpen}
         reorderSongs={effectiveReorderSongs}
-        onReorderStarted={() => markPending("reorder")}
+        onReorderStarted={handleReorderStarted}
         readOnly={isArchived}
       />
 

@@ -14,7 +14,8 @@ interface PresenceUser {
  */
 export function useSetlistPresence(
   setlistId: string,
-  mode: "viewing" | "editing"
+  mode: "viewing" | "editing",
+  displayName?: string
 ): PresenceUser[] {
   const [others, setOthers] = useState<PresenceUser[]>([]);
   const localKeyRef = useRef<string>("");
@@ -24,25 +25,6 @@ export function useSetlistPresence(
     const localKey = `user_${Math.random().toString(36).slice(2, 8)}`;
     localKeyRef.current = localKey;
 
-    // Determine the user's display name
-    async function getDisplayName(): Promise<string> {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        // Try to fetch profile name
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", user.id)
-          .single();
-        if (profile?.display_name) return profile.display_name;
-        return user.email?.split("@")[0] ?? "User";
-      }
-      // Anonymous/shared user — no identifiable name
-      return "";
-    }
-
     const channel = supabase.channel(`presence:${setlistId}`);
 
     channel
@@ -51,24 +33,22 @@ export function useSetlistPresence(
         const users: PresenceUser[] = [];
         for (const [, presences] of Object.entries(state)) {
           for (const p of presences) {
-            // Skip self by matching our custom localKey field
             if (p.localKey === localKey) continue;
             users.push({ name: p.name, mode: p.mode });
           }
         }
         setOthers(users);
       })
-      .subscribe(async (status) => {
+      .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          const name = await getDisplayName();
-          channel.track({ name, mode, localKey });
+          channel.track({ name: displayName ?? "", mode, localKey });
         }
       });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [setlistId, mode]);
+  }, [setlistId, mode, displayName]);
 
   return others;
 }

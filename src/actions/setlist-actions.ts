@@ -130,37 +130,40 @@ export async function duplicateSetlist(id: string) {
       .order("position", { ascending: true });
 
     if (junctionRows && junctionRows.length > 0) {
-      for (const row of junctionRows) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const validRows = junctionRows.filter((row) => (row.song as any) != null);
+
+      // Batch insert all songs at once (2 queries instead of 2N)
+      const songInserts = validRows.map((row) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const song = row.song as any;
-        if (!song) continue;
+        return {
+          user_id: user.id,
+          title: song.title,
+          artist: song.artist,
+          duration_ms: song.duration_ms,
+          bpm: song.bpm,
+          key: song.key,
+          notes: song.notes,
+          spotify_track_id: song.spotify_track_id,
+          spotify_uri: song.spotify_uri,
+        };
+      });
 
-        // Create a copy of the song
-        const { data: newSong, error: songErr } = await supabase
-          .from("songs")
-          .insert({
-            user_id: user.id,
-            title: song.title,
-            artist: song.artist,
-            duration_ms: song.duration_ms,
-            bpm: song.bpm,
-            key: song.key,
-            notes: song.notes,
-            spotify_track_id: song.spotify_track_id,
-            spotify_uri: song.spotify_uri,
-          })
-          .select("id")
-          .single();
+      const { data: newSongs, error: batchErr } = await supabase
+        .from("songs")
+        .insert(songInserts)
+        .select("id");
 
-        if (songErr || !newSong) continue;
-
-        // Link to the new setlist
-        await supabase.from("setlist_songs").insert({
+      if (!batchErr && newSongs) {
+        const junctionInserts = newSongs.map((newSong, i) => ({
           setlist_id: newSetlist.id,
           song_id: newSong.id,
-          position: row.position,
-          transition_notes: row.transition_notes,
-        });
+          position: validRows[i].position,
+          transition_notes: validRows[i].transition_notes,
+        }));
+
+        await supabase.from("setlist_songs").insert(junctionInserts);
       }
     }
 
@@ -170,24 +173,34 @@ export async function duplicateSetlist(id: string) {
 }
 
 export async function getSetlist(id: string) {
-  return withAuth(async (supabase) => {
-    const { data, error } = await supabase
-      .from("setlists")
-      .select(
-        `
-      *,
-      setlist_songs(
-        id,
-        position,
-        transition_notes,
-        song:songs(*)
-      )
-    `
-      )
-      .eq("id", id)
-      .single();
+  return withAuth(async (supabase, user) => {
+    // Fetch setlist and profile in parallel to avoid sequential round-trips
+    const [setlistResult, profileResult] = await Promise.all([
+      supabase
+        .from("setlists")
+        .select(
+          `
+        *,
+        setlist_songs(
+          id,
+          position,
+          transition_notes,
+          song:songs(*)
+        )
+      `
+        )
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("profiles")
+        .select("default_break_duration_ms, display_name")
+        .eq("id", user.id)
+        .single(),
+    ]);
 
-    if (error) return { error: error.message };
+    if (setlistResult.error) return { error: setlistResult.error.message };
+
+    const data = setlistResult.data;
 
     // Sort songs by position
     if (data.setlist_songs) {
@@ -196,6 +209,12 @@ export async function getSetlist(id: string) {
       );
     }
 
-    return { data };
+    return {
+      data: {
+        ...data,
+        defaultBreakDurationMs: profileResult.data?.default_break_duration_ms ?? 900000,
+        displayName: profileResult.data?.display_name || user.email?.split("@")[0] || "User",
+      },
+    };
   });
 }

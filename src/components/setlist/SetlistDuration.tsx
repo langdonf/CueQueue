@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Clock } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 import type { SongItem } from "@/lib/types";
@@ -6,7 +7,7 @@ interface SetlistDurationProps {
   songs: SongItem[];
 }
 
-export function SetlistDuration({ songs }: SetlistDurationProps) {
+export const SetlistDuration = memo(function SetlistDuration({ songs }: SetlistDurationProps) {
   const totalMs = songs.reduce((sum, s) => sum + (s.duration_ms ?? 0), 0);
   const songsWithDuration = songs.filter((s) => s.duration_ms);
 
@@ -24,4 +25,4 @@ export function SetlistDuration({ songs }: SetlistDurationProps) {
       </span>
     </div>
   );
-}
+});

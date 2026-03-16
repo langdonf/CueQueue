@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { GripVertical, X, ArrowRight } from "lucide-react";
 import { formatDurationShort } from "@/lib/utils";
 import type { SongItem } from "@/lib/types";
@@ -11,7 +12,7 @@ interface SongRowProps {
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
 }
 
-export function SongRow({ song, index, onRemove, onEdit, dragHandleProps }: SongRowProps) {
+export const SongRow = memo(function SongRow({ song, index, onRemove, onEdit, dragHandleProps }: SongRowProps) {
   const isBreak = song.title === BREAK_SENTINEL;
 
   if (isBreak) {
@@ -123,4 +124,4 @@ export function SongRow({ song, index, onRemove, onEdit, dragHandleProps }: Song
       )}
     </div>
   );
-}
+});

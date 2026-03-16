@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useId } from "react";
+import { memo, useCallback, useId } from "react";
 import {
   DndContext,
   closestCenter,
@@ -37,7 +37,7 @@ interface SortableSongListProps {
   readOnly?: boolean;
 }
 
-function SortableSongRow({
+const SortableSongRow = memo(function SortableSongRow({
   song,
   index,
   onRemove,
@@ -77,7 +77,7 @@ function SortableSongRow({
       />
     </div>
   );
-}
+});
 
 export function SortableSongList({
   songs,
