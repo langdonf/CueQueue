@@ -29,6 +29,7 @@ interface SortableSongListProps {
   setlistId: string;
   onRemoveSong: (songId: string) => void;
   onEditSong?: (song: SongItem) => void;
+  onBreakDurationChange?: (songId: string, durationMs: number) => void;
   reorderSongs: (
     setlistId: string,
     orderedSongIds: string[]
@@ -44,6 +45,7 @@ const SortableSongRow = memo(function SortableSongRow({
   index,
   onRemove,
   onEdit,
+  onBreakDurationChange,
   readOnly,
   notesExpanded,
   onSaveNotes,
@@ -52,6 +54,7 @@ const SortableSongRow = memo(function SortableSongRow({
   index: number;
   onRemove: (songId: string) => void;
   onEdit?: (song: SongItem) => void;
+  onBreakDurationChange?: (songId: string, durationMs: number) => void;
   readOnly?: boolean;
   notesExpanded?: boolean;
   onSaveNotes?: (songId: string, notes: string | null) => void;
@@ -79,6 +82,7 @@ const SortableSongRow = memo(function SortableSongRow({
         index={index}
         onRemove={readOnly ? undefined : onRemove}
         onEdit={onEdit}
+        onBreakDurationChange={readOnly ? undefined : onBreakDurationChange}
         dragHandleProps={readOnly ? undefined : listeners}
         notesExpanded={notesExpanded}
         onSaveNotes={onSaveNotes}
@@ -94,6 +98,7 @@ export function SortableSongList({
   setlistId,
   onRemoveSong,
   onEditSong,
+  onBreakDurationChange,
   reorderSongs,
   onReorderStarted,
   readOnly = false,
@@ -163,6 +168,7 @@ export function SortableSongList({
               index={index}
               onRemove={onRemoveSong}
               onEdit={onEditSong}
+              onBreakDurationChange={onBreakDurationChange}
               readOnly={readOnly}
               notesExpanded={notesExpanded}
               onSaveNotes={onSaveNotes}

@@ -266,6 +266,19 @@ export function SetlistEditor({
     });
   }
 
+  const handleBreakDurationChange = useCallback(
+    (songId: string, durationMs: number) => {
+      // Optimistic local update
+      setSongs((prev) =>
+        prev.map((s) => (s.id === songId ? { ...s, duration_ms: durationMs } : s))
+      );
+      // Persist to server
+      handleEditSong(songId, { duration_ms: durationMs });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   async function handleDelete() {
     if (!confirm("Delete this setlist? This cannot be undone.")) return;
     setMenuLoading("delete");
@@ -514,6 +527,7 @@ export function SetlistEditor({
         setlistId={setlist.id}
         onRemoveSong={isArchived ? noopRemove : handleRemoveSong}
         onEditSong={isArchived ? undefined : handleEditSongOpen}
+        onBreakDurationChange={isArchived ? undefined : handleBreakDurationChange}
         reorderSongs={effectiveReorderSongs}
         onReorderStarted={handleReorderStarted}
         readOnly={isArchived}

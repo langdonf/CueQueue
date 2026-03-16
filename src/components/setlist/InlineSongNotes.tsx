@@ -62,7 +62,7 @@ export function InlineSongNotes({ songId, initialNotes, onSave, readOnly }: Inli
       onChange={(e) => handleChange(e.target.value)}
       placeholder="Add notes..."
       rows={1}
-      className="w-full px-4 py-1 text-xs text-muted-foreground bg-transparent border-none outline-none resize-none overflow-hidden placeholder:text-muted-foreground/50 focus:text-foreground"
+      className="w-full px-4 py-1 pt-2 text-xs text-muted-foreground bg-transparent border-none outline-none resize-none overflow-hidden placeholder:text-muted-foreground/50 focus:text-foreground"
     />
   );
 }

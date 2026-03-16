@@ -113,3 +113,55 @@ body {
 .splash-fade-in-d3 {
   animation: splash-fade 0.8s ease-out 0.35s both;
 }
+
+/* Break duration slider — mixer fader style */
+.break-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.break-slider::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--color-muted-foreground);
+}
+
+.break-slider::-moz-range-track {
+  height: 1px;
+  background: var(--color-muted-foreground);
+  border: none;
+}
+
+.break-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 2px;
+  height: 16px;
+  background: var(--color-foreground);
+  border: none;
+  border-radius: 1px;
+  margin-top: -8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.break-slider::-moz-range-thumb {
+  width: 2px;
+  height: 16px;
+  background: var(--color-foreground);
+  border: none;
+  border-radius: 1px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.break-slider:hover::-webkit-slider-thumb,
+.break-slider:active::-webkit-slider-thumb {
+  background: var(--color-primary);
+  width: 3px;
+}
+
+.break-slider:hover::-moz-range-thumb,
+.break-slider:active::-moz-range-thumb {
+  background: var(--color-primary);
+  width: 3px;
+}
