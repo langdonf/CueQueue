@@ -12,12 +12,11 @@ interface LivePageProps {
 export default async function LivePage({ params }: LivePageProps) {
   const { id } = await params;
 
-  const isPro = await isProUser();
+  const [isPro, result] = await Promise.all([isProUser(), getSetlist(id)]);
+
   if (!isPro) {
     return <UpgradePrompt feature="Live Mode" />;
   }
-
-  const result = await getSetlist(id);
 
   if (!("data" in result) || !result.data) {
     notFound();

@@ -11,8 +11,8 @@ export async function createShareLink(
   name?: string
 ) {
   return withAuth(async (supabase, user) => {
-    // Pro gate: sharing requires Pro subscription
-    const proError = await requirePro();
+    // Pro gate: sharing requires Pro subscription (reuse existing client)
+    const proError = await requirePro(supabase, user.id);
     if (proError) return proError;
 
     // Verify user owns this setlist

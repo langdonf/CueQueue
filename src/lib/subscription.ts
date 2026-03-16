@@ -6,20 +6,29 @@ export type SubscriptionTier = "free" | "pro";
 
 /**
  * Get the subscription tier for the currently authenticated user.
+ * Accepts an optional existing Supabase client and userId to avoid
+ * creating a redundant client and re-authenticating.
  * Returns "free" if not authenticated or no profile found.
  */
-export async function getSubscriptionTier(): Promise<SubscriptionTier> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export async function getSubscriptionTier(
+  existingClient?: SupabaseClient,
+  userId?: string
+): Promise<SubscriptionTier> {
+  const supabase = existingClient ?? (await createSupabaseServerClient());
 
-  if (!user) return "free";
+  let uid = userId;
+  if (!uid) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return "free";
+    uid = user.id;
+  }
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("subscription_tier, is_lifetime_pro")
-    .eq("id", user.id)
+    .eq("id", uid)
     .single();
 
   // Lifetime pro (friends & family) always gets pro access
@@ -38,11 +47,15 @@ export async function isProUser(): Promise<boolean> {
 
 /**
  * Require pro subscription. Returns an error object if not pro.
+ * Accepts optional existing client/userId to avoid redundant auth.
  * Matches the existing { error: string } pattern used in server actions.
  */
-export async function requirePro(): Promise<{ error: string } | null> {
-  const isPro = await isProUser();
-  if (!isPro) {
+export async function requirePro(
+  existingClient?: SupabaseClient,
+  userId?: string
+): Promise<{ error: string } | null> {
+  const tier = await getSubscriptionTier(existingClient, userId);
+  if (tier !== "pro") {
     return {
       error:
         "This feature requires a Pro subscription. Upgrade for just $5/year.",

@@ -110,7 +110,13 @@ export function useRealtimeSetlist(
         };
       });
 
-      setSongs(mapped);
+      // Filter out songs with pending removes — they were optimistically deleted
+      // but the server action may still be in-flight
+      const filtered = mapped.filter(
+        (s) => !pendingOps.current.has(`remove:${s.setlistSongId}`)
+      );
+
+      setSongs(filtered);
     },
     [setlistId, setSongs]
   );
@@ -175,14 +181,20 @@ export function useRealtimeSetlist(
             }
 
             // Detect position change → debounced refetch
+            // But skip if there are pending removes — position changes from
+            // recompact_setlist_positions after a delete are self-echo
+            const hasPendingRemoves = Array.from(pendingOps.current).some(
+              (op) => op.startsWith("remove:")
+            );
             const existing = songsRef.current.find(
               (s) => s.setlistSongId === newRow.id
             );
             if (existing && existing.position !== newRow.position) {
+              if (hasPendingRemoves) return;
               if (reorderTimer.current) clearTimeout(reorderTimer.current);
               reorderTimer.current = setTimeout(() => {
                 refetchAllSongs(supabase);
-              }, 100);
+              }, 300);
               return;
             }
 

@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Music, MapPin, Calendar, Clock } from "lucide-react";
@@ -12,9 +14,30 @@ interface SharedPageProps {
   params: Promise<{ token: string }>;
 }
 
+// React.cache deduplicates within a single request so generateMetadata
+// and the page component share the same result without double-fetching.
+const getCachedSharedSetlist = cache(getSharedSetlist);
+
+export async function generateMetadata({
+  params,
+}: SharedPageProps): Promise<Metadata> {
+  const { token } = await params;
+  const result = await getCachedSharedSetlist(token);
+
+  if (result.error || !result.data) {
+    return { title: "Shared Setlist — CueQueue" };
+  }
+
+  const songCount = result.data.setlist_songs?.length ?? 0;
+  return {
+    title: `${result.data.name} — CueQueue`,
+    description: `Shared setlist with ${songCount} ${songCount === 1 ? "song" : "songs"}${result.data.venue ? ` at ${result.data.venue}` : ""}`,
+  };
+}
+
 export default async function SharedSetlistPage({ params }: SharedPageProps) {
   const { token } = await params;
-  const result = await getSharedSetlist(token);
+  const result = await getCachedSharedSetlist(token);
 
   if (result.error || !result.data) {
     notFound();
@@ -77,7 +100,7 @@ export default async function SharedSetlistPage({ params }: SharedPageProps) {
       <div className="flex items-center gap-2 mb-6">
         <Music className="w-5 h-5 text-primary" />
         <span className="text-sm font-medium text-muted-foreground">
-          SetList
+          CueQueue
         </span>
       </div>
 
@@ -112,7 +135,7 @@ export default async function SharedSetlistPage({ params }: SharedPageProps) {
         <p className="text-sm text-muted-foreground">
           Shared via{" "}
           <Link href="/" className="text-primary hover:underline">
-            SetList
+            CueQueue
           </Link>
         </p>
       </div>

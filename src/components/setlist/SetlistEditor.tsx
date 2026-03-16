@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, MoreVertical, Copy, ChevronDown, ChevronRight, Pause, Archive, ArchiveRestore, Loader2 } from "lucide-react";
+import { Plus, Trash2, MoreVertical, Copy, ChevronDown, ChevronRight, Archive, ArchiveRestore, Loader2 } from "lucide-react";
 import { updateSetlist, deleteSetlist, duplicateSetlist, archiveSetlist } from "@/actions/setlist-actions";
 import {
   addSongToSetlist,
@@ -180,7 +180,10 @@ export function SetlistEditor({
       return;
     }
     markPending(`add:${result.data.song.id}`);
-    setSongs((prev) => [...prev, result.data.song]);
+    setSongs((prev) => {
+      if (prev.some((s) => s.setlistSongId === result.data.song.setlistSongId)) return prev;
+      return [...prev, result.data.song];
+    });
     setShowAddModal(false);
     setShowSpotify(false);
   }
@@ -242,7 +245,10 @@ export function SetlistEditor({
       return;
     }
     markPending(`add:${result.data.song.id}`);
-    setSongs((prev) => [...prev, result.data.song]);
+    setSongs((prev) => {
+      if (prev.some((s) => s.setlistSongId === result.data.song.setlistSongId)) return prev;
+      return [...prev, result.data.song];
+    });
   }
 
   async function handleDelete() {
@@ -502,13 +508,12 @@ export function SetlistEditor({
           <button
             onClick={handleAddBreak}
             disabled={addingBreak}
-            className="flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors disabled:opacity-50"
+            className="relative flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-border rounded-lg text-sm text-muted-foreground hover:text-foreground hover:border-primary transition-colors disabled:opacity-50"
             title="Add set break"
           >
-            {addingBreak ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Pause className="w-4 h-4" />
+            <span className={addingBreak ? "invisible" : ""}>Add Break</span>
+            {addingBreak && (
+              <Loader2 className="w-4 h-4 animate-spin absolute" />
             )}
           </button>
         </div>
@@ -528,6 +533,7 @@ export function SetlistEditor({
           onAdd={handleAddSong}
           onClose={() => setShowSpotify(false)}
           shareToken={shareToken}
+          setlistId={setlist.id}
         />
       )}
 

@@ -107,27 +107,30 @@ export async function duplicateSetlist(id: string) {
 
     if (fetchError || !original) return { error: "Setlist not found" };
 
-    // Create the duplicate setlist
-    const { data: newSetlist, error: createError } = await supabase
-      .from("setlists")
-      .insert({
-        user_id: user.id,
-        name: `${original.name} (copy)`,
-        venue: original.venue,
-        gig_date: original.gig_date,
-        notes: original.notes,
-      })
-      .select("id")
-      .single();
+    // Create the duplicate and fetch songs in parallel (both only need original data)
+    const [createResult, junctionResult] = await Promise.all([
+      supabase
+        .from("setlists")
+        .insert({
+          user_id: user.id,
+          name: `${original.name} (copy)`,
+          venue: original.venue,
+          gig_date: original.gig_date,
+          notes: original.notes,
+        })
+        .select("id")
+        .single(),
+      supabase
+        .from("setlist_songs")
+        .select("position, transition_notes, song:songs(*)")
+        .eq("setlist_id", id)
+        .order("position", { ascending: true }),
+    ]);
 
+    const { data: newSetlist, error: createError } = createResult;
     if (createError || !newSetlist) return { error: createError?.message ?? "Failed to create copy" };
 
-    // Fetch all songs from the original setlist via the junction table
-    const { data: junctionRows } = await supabase
-      .from("setlist_songs")
-      .select("position, transition_notes, song:songs(*)")
-      .eq("setlist_id", id)
-      .order("position", { ascending: true });
+    const { data: junctionRows } = junctionResult;
 
     if (junctionRows && junctionRows.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
