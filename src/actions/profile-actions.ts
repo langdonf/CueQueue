@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { withAuth } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -16,6 +17,7 @@ export async function updateDisplayName(displayName: string) {
 
       if (error) return { error: error.message };
 
+      revalidatePath("/setlists", "layout");
       return { data: { displayName: trimmed || null } };
     });
   } catch (e) {
@@ -38,6 +40,8 @@ export async function updateDefaultBreakDuration(durationMs: number) {
 
       if (error) return { error: error.message };
 
+      // Invalidate all setlist pages so they pick up the new break duration
+      revalidatePath("/setlists", "layout");
       return { data: { durationMs } };
     });
   } catch (e) {

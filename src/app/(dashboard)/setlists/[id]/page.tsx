@@ -5,6 +5,8 @@ import { getSetlist } from "@/actions/setlist-actions";
 import { SetlistEditor } from "@/components/setlist/SetlistEditor";
 import { mapSetlistSongs } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 interface SetlistPageProps {
   params: Promise<{ id: string }>;
 }

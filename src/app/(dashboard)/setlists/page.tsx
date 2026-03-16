@@ -4,6 +4,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { SetlistCard } from "@/components/setlist/SetlistCard";
 import { ArchiveToggle } from "@/components/setlist/ArchiveToggle";
 
+export const dynamic = "force-dynamic";
+
 interface SetlistsPageProps {
   searchParams: Promise<{ show?: string }>;
 }
