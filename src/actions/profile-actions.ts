@@ -69,6 +69,28 @@ export async function updateDefaultNotesExpanded(expanded: boolean) {
   }
 }
 
+export async function updateAccentTheme(theme: string) {
+  try {
+    return await withAuth(async (supabase, user) => {
+      const valid = ["warm", "warm-bright", "steel", "steel-bright", "slate", "slate-bright", "violet", "violet-bright", "rose", "rose-bright", "sage", "sage-bright"];
+      if (!valid.includes(theme)) return { error: "Invalid theme" };
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ accent_theme: theme })
+        .eq("id", user.id);
+
+      if (error) return { error: error.message };
+
+      revalidatePath("/setlists", "layout");
+      return { data: { theme } };
+    });
+  } catch (e) {
+    console.error("updateAccentTheme error:", e);
+    return { error: "Failed to update theme" };
+  }
+}
+
 export async function deleteAccount() {
   return withAuth(async (_supabase, user) => {
     const admin = createSupabaseAdminClient();

@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Check, Loader2, LogOut, Trash2, ExternalLink } from "lucide-react";
-import { updateDisplayName, updateDefaultBreakDuration, updateDefaultNotesExpanded, deleteAccount } from "@/actions/profile-actions";
+import { updateDisplayName, updateDefaultBreakDuration, updateDefaultNotesExpanded, updateAccentTheme, deleteAccount } from "@/actions/profile-actions";
+import { useTheme } from "@/components/ThemeProvider";
+import { ACCENT_THEME_OPTIONS, type AccentTheme } from "@/lib/themes";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
@@ -12,6 +14,7 @@ interface SettingsClientProps {
   displayName: string | null;
   defaultBreakDurationMs: number;
   defaultNotesExpanded: boolean;
+  accentTheme: string;
   version: string;
   subscriptionSlot: React.ReactNode;
 }
@@ -24,8 +27,9 @@ const BREAK_OPTIONS = [
   { label: "30 min", value: 30 * 60 * 1000 },
 ];
 
-export function SettingsClient({ email, displayName, defaultBreakDurationMs, defaultNotesExpanded, version, subscriptionSlot }: SettingsClientProps) {
+export function SettingsClient({ email, displayName, defaultBreakDurationMs, defaultNotesExpanded, accentTheme, version, subscriptionSlot }: SettingsClientProps) {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(displayName ?? "");
   const [savingName, setSavingName] = useState(false);
@@ -206,6 +210,52 @@ export function SettingsClient({ email, displayName, defaultBreakDurationMs, def
         </div>
       </div>
 
+      <div className="mt-4">
+        <span className="text-sm text-muted-foreground">Accent color</span>
+        <div className="mt-2 space-y-2">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] text-muted-foreground w-10 shrink-0">subdued</span>
+            <div className="flex gap-2">
+              {ACCENT_THEME_OPTIONS.filter((o) => !o.value.includes("-bright")).map((opt) => (
+                <ThemeSwatch
+                  key={opt.value}
+                  opt={opt}
+                  isActive={theme === opt.value}
+                  onSelect={async () => {
+                    setTheme(opt.value);
+                    const result = await updateAccentTheme(opt.value);
+                    if ("error" in result) {
+                      toast.error(result.error);
+                      setTheme(accentTheme as AccentTheme);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] text-muted-foreground w-10 shrink-0">bright</span>
+            <div className="flex gap-2">
+              {ACCENT_THEME_OPTIONS.filter((o) => o.value.includes("-bright")).map((opt) => (
+                <ThemeSwatch
+                  key={opt.value}
+                  opt={opt}
+                  isActive={theme === opt.value}
+                  onSelect={async () => {
+                    setTheme(opt.value);
+                    const result = await updateAccentTheme(opt.value);
+                    if ("error" in result) {
+                      toast.error(result.error);
+                      setTheme(accentTheme as AccentTheme);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <hr className="border-border my-6" />
 
       {/* About */}
@@ -264,5 +314,32 @@ export function SettingsClient({ email, displayName, defaultBreakDurationMs, def
         </button>
       </div>
     </div>
+  );
+}
+
+function ThemeSwatch({
+  opt,
+  isActive,
+  onSelect,
+}: {
+  opt: { value: string; label: string; primary: string };
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      onClick={onSelect}
+      className={`w-9 h-9 rounded-full border-2 transition-all ${
+        isActive
+          ? "border-foreground scale-110"
+          : "border-transparent hover:border-muted-foreground/50"
+      }`}
+      title={opt.label}
+    >
+      <span
+        className="block w-full h-full rounded-full"
+        style={{ backgroundColor: opt.primary }}
+      />
+    </button>
   );
 }

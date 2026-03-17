@@ -31,7 +31,6 @@ export async function GET(request: Request) {
   let authorized = false;
   let rateLimitKey: string | null = null;
   let supabase: SupabaseClient | null = null;
-  let userId: string | null = null;
 
   // 1) Check for authenticated session (owner editing their own setlist)
   try {
@@ -41,7 +40,6 @@ export async function GET(request: Request) {
     } = await supabase.auth.getUser();
     if (user) {
       authorized = true;
-      userId = user.id;
       // Authenticated users get a generous limit keyed by user ID
       rateLimitKey = `user:${user.id}`;
     }

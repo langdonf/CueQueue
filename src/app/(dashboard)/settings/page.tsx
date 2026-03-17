@@ -22,7 +22,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, subscription_tier, default_break_duration_ms, default_notes_expanded")
+    .select("display_name, subscription_tier, default_break_duration_ms, default_notes_expanded, accent_theme")
     .eq("id", user.id)
     .single();
 
@@ -62,6 +62,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         displayName={profile?.display_name ?? null}
         defaultBreakDurationMs={profile?.default_break_duration_ms ?? 900000}
         defaultNotesExpanded={profile?.default_notes_expanded ?? true}
+        accentTheme={(profile?.accent_theme as string) ?? "warm"}
         version="0.1.0"
         subscriptionSlot={subscriptionSlot}
       />
